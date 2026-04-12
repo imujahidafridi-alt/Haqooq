@@ -1,0 +1,47 @@
+{
+  "project_info": {
+    "project_number": "99158635959",
+    "project_id": "haqooq-a3e91",
+    "storage_bucket": "haqooq-a3e91.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:99158635959:android:f5d4eaa916cf665674e432",
+        "android_client_info": {
+          "package_name": "com.haqooq"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "99158635959-ue013dkecgbhrd94lkp0c62ljrv9vj1a.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.haqooq",
+            "certificate_hash": "5e8f16062ea3cd2c4a0d547876baa6f38cabf625"
+          }
+        },
+        {
+          "client_id": "99158635959-69f4je7o2frsedu4dua19qtvaq8l7q4f.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAfMYwWD0JskbvaFAXIG03lOxX1F5EBR8Q"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "99158635959-69f4je7o2frsedu4dua19qtvaq8l7q4f.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

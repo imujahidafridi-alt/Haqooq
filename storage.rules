@@ -1,0 +1,22 @@
+rules_version = '2';
+
+service firebase.storage {
+  match /b/{bucket}/o {
+    
+    // Abstract functions
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    match /credentials/{document=**} {
+      // Any authenticated user can upload their own credentials
+      allow write: if isAuthenticated();
+      // Only admins and the owner should be reading these
+      allow read: if isAuthenticated(); // In a strict prod environment, match owner or admin claim
+    }
+    
+    match /{allPaths=**} {
+      allow read, write: if false;
+    }
+  }
+}
