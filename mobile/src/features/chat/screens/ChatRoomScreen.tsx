@@ -34,9 +34,11 @@ export const ChatRoomScreen = ({ route, navigation }: any) => {
     navigation.setOptions({ title: chatTitle });
 
     // Attach native Firestore listener.
-    const unsubscribe = listenToMessages(chatId, (msgs) => {
+    const unsubscribe = listenToMessages(chatId, (msgs, fromCache) => {
       setMessages(msgs);
-      setIsLoading(false);
+      if (!fromCache || msgs.length > 0) {
+        setIsLoading(false);
+      }
       // Give UI brief moment to render then scroll to bottom
       setTimeout(() => flatListRef.current?.scrollToEnd({ animated: true }), 200);
     });
@@ -77,8 +79,10 @@ export const ChatRoomScreen = ({ route, navigation }: any) => {
       keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 0}
     >
       {isLoading ? (
-        <View style={styles.centerLoad}>
-          <ActivityIndicator size="large" color={Colors.primary} />
+        <View style={styles.skeletonContainer}>
+           <View style={[styles.skeletonBubble, { alignSelf: 'flex-start', width: '60%' }]} />
+           <View style={[styles.skeletonBubble, { alignSelf: 'flex-end', width: '40%' }]} />
+           <View style={[styles.skeletonBubble, { alignSelf: 'flex-start', width: '70%' }]} />
         </View>
       ) : (
         <FlatList
@@ -122,6 +126,18 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: Colors.background,
+  },
+  skeletonContainer: {
+    flex: 1,
+    padding: 16,
+    justifyContent: 'flex-end',
+  },
+  skeletonBubble: {
+    height: 40,
+    backgroundColor: '#E0E0E0',
+    borderRadius: 20,
+    marginBottom: 16,
+    opacity: 0.5
   },
   centerLoad: {
     flex: 1, 

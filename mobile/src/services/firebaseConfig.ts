@@ -1,4 +1,5 @@
 import { initializeApp, getApps, getApp } from "firebase/app";
+// @ts-ignore
 import { initializeAuth, getReactNativePersistence, getAuth } from "firebase/auth";
 import { initializeFirestore, getFirestore, memoryLocalCache } from "firebase/firestore";
 import { getStorage } from "firebase/storage";
@@ -29,7 +30,7 @@ try {
 let db: ReturnType<typeof getFirestore>;
 try {
   // Enterprise standard for Firestore in React Native: Disable long sockets if they block
-  // and force Memory cache to avoid IndexedDB crashes that masquerade as "offline"
+  // Use memory cache because the Web SDK's persistentLocalCache relies on IndexedDB, which is unsupported in RN.
   db = initializeFirestore(app, {
     localCache: memoryLocalCache(),
     experimentalForceLongPolling: true

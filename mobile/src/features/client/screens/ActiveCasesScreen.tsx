@@ -7,6 +7,7 @@ import { useAuthStore } from '../../../store/authStore';
 import { Colors } from '../../../utils/Colors';
 import { Typography } from '../../../utils/Typography';
 import { Button } from '../../../components/ui/Button';
+import { SkeletonCard } from '../../../components/ui/SkeletonCard';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
 interface Props {
@@ -25,7 +26,7 @@ export const ActiveCasesScreen: React.FC<Props> = ({ navigation }) => {
       where('clientId', '==', user.id)
     );
 
-    const unsubscribe = onSnapshot(q, (snapshot) => {
+    const unsubscribe = onSnapshot(q, { includeMetadataChanges: true }, (snapshot) => {
       const caseData = snapshot.docs.map(doc => ({
         id: doc.id,
         ...doc.data()
@@ -34,7 +35,11 @@ export const ActiveCasesScreen: React.FC<Props> = ({ navigation }) => {
       // Sort by creation date descending
       caseData.sort((a, b) => b.createdAt - a.createdAt);
       setCases(caseData);
-      setLoading(false);
+      
+      // Stop the skeleton loader if we have ANY data, or if the server confirms it is completely empty
+      if (caseData.length > 0 || !snapshot.metadata.fromCache) {
+        setLoading(false);
+      }
     });
 
     return () => unsubscribe();
@@ -93,14 +98,6 @@ export const ActiveCasesScreen: React.FC<Props> = ({ navigation }) => {
     </View>
   );
 
-  if (loading) {
-    return (
-      <View style={styles.centered}>
-        <ActivityIndicator size="large" color={Colors.primary} />
-      </View>
-    );
-  }
-
   return (
     <View style={styles.container}>
       <FlatList
@@ -109,10 +106,18 @@ export const ActiveCasesScreen: React.FC<Props> = ({ navigation }) => {
         renderItem={renderCase}
         contentContainerStyle={styles.listContainer}
         ListEmptyComponent={
-          <View style={styles.emptyContainer}>
-            <Text style={Typography.body}>You have no active or completed cases yet.</Text>
-            <Button title="Post a New Case" onPress={() => navigation.navigate('Home')} style={{marginTop: 16}}/>
-          </View>
+          !loading ? (
+            <View style={styles.emptyContainer}>
+              <Text style={Typography.body}>You have no active or completed cases yet.</Text>
+              <Button title="Post a New Case" onPress={() => navigation.navigate('Home')} style={{marginTop: 16}}/>
+            </View>
+          ) : (
+            <View style={styles.skeletonContainer}>
+              <SkeletonCard />
+              <SkeletonCard />
+              <SkeletonCard />
+            </View>
+          )
         }
       />
     </View>
@@ -148,5 +153,6 @@ const styles = StyleSheet.create({
   timelineDate: { fontSize: 12, color: Colors.textSecondary, marginTop: 2 },
   timelineDesc: { fontSize: 13, color: Colors.text, marginTop: 4 },
   cardFooter: { marginTop: 16, borderTopWidth: 1, borderTopColor: Colors.border, paddingTop: 16 },
-  emptyContainer: { alignItems: 'center', marginTop: 40 }
+  emptyContainer: { alignItems: 'center', marginTop: 40 },
+  skeletonContainer: { flex: 1, padding: 16 }
 });

@@ -37,7 +37,11 @@ export const ProfileScreen = () => {
         try {
            docSnap = await getDoc(docRef);
         } catch (networkErr) {
-           docSnap = await getDocFromCache(docRef);
+           try {
+             docSnap = await getDocFromCache(docRef);
+           } catch (cacheErr) {
+             // Cache miss, harmless
+           }
         }
 
         if (docSnap && docSnap.exists()) {
@@ -55,7 +59,7 @@ export const ProfileScreen = () => {
           setUser(data); // Sync store with fresh DB data
         }
       } catch (e) {
-        console.error("Silent background profile fetch failed", e);
+        console.log("Silent background profile sync deferred (offline).");
       }
     };
     fetchProfile();

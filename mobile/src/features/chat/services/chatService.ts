@@ -45,27 +45,26 @@ export const sendMessage = async (chatId: string, senderId: string, text: string
  */
 export const listenToMessages = (
   chatId: string, 
-  callback: (messages: ChatMessage[]) => void
+  callback: (messages: ChatMessage[], fromCache: boolean) => void
 ) => {
   const q = query(
     collection(db, `chats/${chatId}/messages`),
     orderBy('createdAt', 'asc')
   );
 
-  return onSnapshot(q, (snapshot) => {
+  return onSnapshot(q, { includeMetadataChanges: true }, (snapshot) => {
     const msgs: ChatMessage[] = [];
     snapshot.forEach((doc) => {
       const data = doc.data();
       msgs.push({ 
         id: doc.id, 
         ...data,
-        // Fallback to local time if server timestamp is still pending
         createdAt: data.createdAt ? (data.createdAt.toMillis ? data.createdAt.toMillis() : data.createdAt) : Date.now()
       } as ChatMessage);
     });
-    callback(msgs);
+    callback(msgs, snapshot.metadata.fromCache);
   }, (error) => {
     console.warn("Realtime listen detached or failed:", error);
-    callback([]);
+    callback([], false);
   });
 };

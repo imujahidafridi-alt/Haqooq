@@ -61,7 +61,7 @@ export const signInWithGoogleCredential = async (idToken: string, role?: UserRol
     role: assignedRole,
     email: user.email,
     displayName: user.displayName || 'Google User',
-    status: assignedRole === 'lawyer' ? 'pending' : 'verified',
+    status: 'verified',
     createdAt: Date.now(),
   };
 
@@ -87,8 +87,8 @@ export const registerUser = async (
     role,
     email: user.email,
     displayName,
-    // Lawyers start as pending, everyone else is verified by default
-    status: role === 'lawyer' ? 'pending' : 'verified',
+    // Approval removed for testing: lawyer accounts are immediately verified
+    status: 'verified',
     createdAt: Date.now(),
   };
 
@@ -110,8 +110,12 @@ export const loginUser = async (email: string, password: string): Promise<UserPr
   try {
      docSnap = await getDoc(docRef);
   } catch(error) {
-     console.error("Firestore offline, loading from cache...", error);
-     docSnap = await getDocFromCache(docRef);
+     console.warn("Firestore offline, loading from cache...");
+     try {
+       docSnap = await getDocFromCache(docRef);
+     } catch (cacheErr) {
+       console.log("No valid cache snapshot found.");
+     }
   }
 
   if (!docSnap || !docSnap.exists()) {
@@ -137,7 +141,11 @@ export const getCurrentUserProfile = async (uid: string): Promise<UserProfile | 
       docSnap = await getDoc(docRef);
     } catch(e) {
       console.warn("Network fetch failed, attempting cache match...");
-      docSnap = await getDocFromCache(docRef);
+      try {
+        docSnap = await getDocFromCache(docRef);
+      } catch (cacheErr) {
+        console.log("No valid cache snapshot found during Google profile hydration.");
+      }
     }
     
     if (docSnap && docSnap.exists()) {

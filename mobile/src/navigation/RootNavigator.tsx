@@ -7,7 +7,6 @@ import { LoginScreen } from '../features/auth/screens/LoginScreen';
 import { RegisterScreen } from '../features/auth/screens/RegisterScreen';
 import { ClientNavigator } from './navigators/ClientNavigator';
 import { LawyerNavigator } from './navigators/LawyerNavigator';
-import { PendingApprovalScreen } from '../features/lawyer/screens/PendingApprovalScreen';
 import { AdminDashboard } from '../features/admin/screens/AdminDashboard';
 import { ChatRoomScreen } from '../features/chat/screens/ChatRoomScreen';
 import { onAuthStateChanged } from 'firebase/auth';
@@ -85,12 +84,7 @@ export const RootNavigator = () => {
       {user ? (
         <Stack.Navigator screenOptions={{ headerShown: false }}>
           {user.role === 'client' && <Stack.Screen name="ClientRoot" component={ClientNavigator} />}
-          {user.role === 'lawyer' && user.status === 'verified' && (
-            <Stack.Screen name="LawyerRoot" component={LawyerNavigator} />
-          )}
-          {user.role === 'lawyer' && user.status === 'pending' && (
-            <Stack.Screen name="PendingApproval" component={PendingApprovalScreen} />
-          )}
+          {user.role === 'lawyer' && <Stack.Screen name="LawyerRoot" component={LawyerNavigator} />}
           {user.role === 'admin' && <Stack.Screen name="AdminRoot" component={AdminDashboard} />}
           
           {/* Shared Screens accessible regardless of role */}

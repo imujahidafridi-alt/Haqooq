@@ -5,6 +5,7 @@ import { CaseProposal, LawyerProfile } from '../../../types/models';
 import { Colors } from '../../../utils/Colors';
 import { Typography } from '../../../utils/Typography';
 import { Button } from '../../../components/ui/Button';
+import { SkeletonCard } from '../../../components/ui/SkeletonCard';
 import { useAuthStore } from '../../../store/authStore';
 import { db } from '../../../services/firebaseConfig';
 import { doc, getDoc } from 'firebase/firestore';
@@ -78,8 +79,6 @@ export const ProposalsScreen: React.FC<Props> = ({ route, navigation }) => {
     </View>
   );
 
-  if (loading) return <View style={styles.centered}><ActivityIndicator size="large" color={Colors.primary} /></View>;
-
   return (
     <View style={styles.container}>
       <FlatList
@@ -88,9 +87,16 @@ export const ProposalsScreen: React.FC<Props> = ({ route, navigation }) => {
         renderItem={renderItem}
         contentContainerStyle={styles.list}
         ListEmptyComponent={
-          <View style={styles.empty}>
-            <Text style={Typography.body}>No pending proposals yet for this case.</Text>
-          </View>
+          !loading ? (
+            <View style={styles.empty}>
+              <Text style={Typography.body}>No pending proposals yet for this case.</Text>
+            </View>
+          ) : (
+            <View style={styles.skeletonContainer}>
+              <SkeletonCard />
+              <SkeletonCard />
+            </View>
+          )
         }
       />
     </View>
@@ -108,5 +114,6 @@ const styles = StyleSheet.create({
   bidAmount: { fontSize: 16, fontWeight: '600', color: Colors.primary },
   rating: { fontSize: 16, fontWeight: 'bold' },
   message: { fontSize: 14, color: Colors.text, fontStyle: 'italic' },
-  empty: { marginTop: 40, alignItems: 'center' }
+  empty: { marginTop: 40, alignItems: 'center' },
+  skeletonContainer: { flex: 1, padding: 16 }
 });
