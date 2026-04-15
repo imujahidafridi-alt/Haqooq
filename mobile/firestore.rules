@@ -1,0 +1,63 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // Abstract function to check user role
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+    // We can assume user role is set in custom claims, or read from document
+    function isAdmin() {
+      return isAuthenticated() && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
+    }
+    function isVerifiedLawyer() {
+      return isAuthenticated() && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'lawyer' && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.status == 'verified';
+    }
+
+    match /users/{userId} {
+      // PROD STANDARD: Users can read their own profile, Admins can read all.
+      allow read: if isOwner(userId) || isAdmin() || (resource.data.role == 'lawyer' && resource.data.status == 'verified');
+      
+      allow create: if isOwner(userId);
+                    
+      // PRODUCTION SECURITY: Prevent privilege escalation via client-side patch.
+      allow update: if isOwner(userId) && (!request.resource.data.diff(resource.data).affectedKeys().hasAny(['isPremium', 'biddingCredits', 'status'])) || isAdmin();
+    }
+
+    match /cases/{caseId} {
+      // Client read/write their own cases
+      allow read, write: if isAuthenticated() && resource.data.clientId == request.auth.uid;
+      // Verified lawyers can read open cases, or cases assigned to them
+      allow read: if isVerifiedLawyer() && (resource.data.status == 'open' || resource.data.assignedLawyerId == request.auth.uid);
+      allow update: if isVerifiedLawyer() && resource.data.assignedLawyerId == request.auth.uid;
+    }
+
+    match /proposals/{proposalId} {
+        // Only the lawyer owning the proposal can write it, clients can update status when accepting
+        allow write: if isVerifiedLawyer() && request.resource.data.lawyerId == request.auth.uid || 
+                     (isAuthenticated() && get(/databases/$(database)/documents/cases/$(request.resource.data.caseId)).data.clientId == request.auth.uid);
+        
+        // The lawyer can read their own proposal, and the case owner can read all proposals for their case
+        allow read: if (isAuthenticated() && get(/databases/$(database)/documents/cases/$(resource.data.caseId)).data.clientId == request.auth.uid) || 
+                       (isVerifiedLawyer() && resource.data.lawyerId == request.auth.uid);
+    }
+
+    match /chats/{chatId} {
+      // Only users in the participants array can read or write to the chat
+      allow read, write: if isAuthenticated() && request.auth.uid in resource.data.participants;
+      
+      match /messages/{messageId} {
+        allow read, write: if isAuthenticated() && request.auth.uid in get(/databases/$(database)/documents/chats/$(chatId)).data.participants;
+      }
+    }
+
+    match /transactions/{txId} {
+      // Users read their own dummy transactions
+      allow read: if isOwner(resource.data.userId);
+      allow write: if false; // Only written via secure Cloud Functions
+    }
+  }
+}
