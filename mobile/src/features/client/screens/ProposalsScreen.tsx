@@ -1,10 +1,12 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, FlatList, ActivityIndicator, Alert } from 'react-native';
+import { View, Text, StyleSheet, FlatList, ActivityIndicator, Alert, TouchableOpacity } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { getProposalsForCase, acceptProposal } from '../services/caseService';
 import { CaseProposal, LawyerProfile } from '../../../types/models';
 import { Colors } from '../../../utils/Colors';
 import { Typography } from '../../../utils/Typography';
 import { Button } from '../../../components/ui/Button';
+import { Card } from '../../../components/ui/Card';
 import { SkeletonCard } from '../../../components/ui/SkeletonCard';
 import { useAuthStore } from '../../../store/authStore';
 import { db } from '../../../services/firebaseConfig';

@@ -1,10 +1,12 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { View, ActivityIndicator } from 'react-native';
 import { useAuthStore } from '../store/authStore';
+import { SplashScreen } from '../components/ui/SplashScreen';
 import { LoginScreen } from '../features/auth/screens/LoginScreen';
 import { RegisterScreen } from '../features/auth/screens/RegisterScreen';
+import { ForgotPasswordScreen } from '../features/auth/screens/ForgotPasswordScreen';
 import { ClientNavigator } from './navigators/ClientNavigator';
 import { LawyerNavigator } from './navigators/LawyerNavigator';
 import { AdminDashboard } from '../features/admin/screens/AdminDashboard';
@@ -27,13 +29,20 @@ const AuthNavigator = () => (
   <AuthStack.Navigator screenOptions={{ headerShown: false }}>
     <AuthStack.Screen name="Login" component={LoginScreen} />
     <AuthStack.Screen name="Register" component={RegisterScreen} />
+    <AuthStack.Screen name="ForgotPassword" component={ForgotPasswordScreen} />
   </AuthStack.Navigator>
 );
 
 export const RootNavigator = () => {
   const { user, isLoading, setUser, setLoading } = useAuthStore();
+  const [isSplashMinTimeDone, setIsSplashMinTimeDone] = useState(false);
 
   useEffect(() => {
+    // Enforce a minimum display time for the Splash Screen branding
+    const splashTimer = setTimeout(() => {
+      setIsSplashMinTimeDone(true);
+    }, 2500); // 2.5 seconds minimum to allow animations to breathe
+
     // Enterprise Standard: Sync strictly with Firebase root auth state to handle token expiry / persistence
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
       try {
@@ -68,15 +77,14 @@ export const RootNavigator = () => {
       }
     });
 
-    return unsubscribe;
+    return () => {
+      unsubscribe();
+      clearTimeout(splashTimer);
+    };
   }, []);
 
-  if (isLoading) {
-    return (
-      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
-        <ActivityIndicator size="large" color="#0000ff" />
-      </View>
-    );
+  if (isLoading || !isSplashMinTimeDone) {
+    return <SplashScreen />;
   }
 
   return (

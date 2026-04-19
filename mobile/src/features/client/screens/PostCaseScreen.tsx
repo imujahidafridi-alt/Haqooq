@@ -5,8 +5,7 @@ import { Input } from '../../../components/ui/Input';
 import { Button } from '../../../components/ui/Button';
 import { Card } from '../../../components/ui/Card';
 import { useAuthStore } from '../../../store/authStore';
-import { classifyCaseWithAI, postCaseToMarketplace } from '../services/caseService';
-
+import { classifyCaseWithAI, postCaseToMarketplace } from '../services/caseService'
 export const PostCaseScreen = ({ navigation }: any) => {
   const { user } = useAuthStore();
   const [title, setTitle] = useState('');
@@ -44,6 +43,7 @@ export const PostCaseScreen = ({ navigation }: any) => {
     try {
       await postCaseToMarketplace(
         user!.id,
+        user!.displayName || 'Unknown Client',
         title,
         description,
         detectedCategory,
@@ -51,7 +51,7 @@ export const PostCaseScreen = ({ navigation }: any) => {
       );
 
       Alert.alert('Success', 'Your case is now live on the marketplace!');
-      // Reset form
+
       setTitle('');
       setDescription('');
       setBudget('');
@@ -71,9 +71,13 @@ export const PostCaseScreen = ({ navigation }: any) => {
     <SafeAreaView style={styles.container}>
       <KeyboardAvoidingView
         style={{ flex: 1 }}
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'padding'}
+        keyboardVerticalOffset={Platform.OS === 'ios' ? 100 : 20}
       >
-        <ScrollView contentContainerStyle={styles.scrollContent}>
+        <ScrollView 
+          contentContainerStyle={[styles.scrollContent, { paddingBottom: 100 }]}
+          keyboardShouldPersistTaps="handled"
+        >
           <Text style={styles.header}>Find Legal Help</Text>
         <Text style={styles.subtext}>Describe your problem in plain english. Our AI will categorize it and match you with the right experts.</Text>
 

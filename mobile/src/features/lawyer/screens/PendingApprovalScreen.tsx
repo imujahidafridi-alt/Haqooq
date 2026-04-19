@@ -8,6 +8,7 @@ import { Button } from '../../../components/ui/Button';
 import { Card } from '../../../components/ui/Card';
 import { useAuthStore } from '../../../store/authStore';
 import { logoutUser } from '../../auth/services/authService';
+import { Colors } from '../../../utils/Colors';
 
 export const PendingApprovalScreen = () => {
   const { user, logout } = useAuthStore();
@@ -99,45 +100,55 @@ const styles = StyleSheet.create({
     flex: 1, 
     justifyContent: 'center', 
     padding: 20, 
-    backgroundColor: '#F5f5f5'
+    backgroundColor: Colors.background
   },
   card: {
     padding: 24,
-    alignItems: 'center'
+    alignItems: 'center',
+    backgroundColor: Colors.surface,
+    borderColor: Colors.border,
+    borderWidth: 1,
+    shadowColor: Colors.text,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 2,
   },
   title: {
     fontSize: 22, 
     fontWeight: 'bold', 
     marginBottom: 12, 
-    textAlign: 'center'
+    textAlign: 'center',
+    color: Colors.primary
   },
   subtitle: {
     fontSize: 16,
-    color: '#666',
+    color: Colors.textSecondary,
     textAlign: 'center',
     marginBottom: 20,
     lineHeight: 22,
   },
   statusBox: {
-    backgroundColor: '#FFFBEA',
+    backgroundColor: '#FFFBEA', // Keep subtle warning background
     padding: 12,
     borderRadius: 8,
     borderWidth: 1,
-    borderColor: '#FFE58F',
+    borderColor: Colors.warning,
     marginBottom: 24,
     width: '100%',
     alignItems: 'center'
   },
   statusText: {
     fontSize: 16,
-    fontWeight: '500'
+    fontWeight: '500',
+    color: Colors.text
   },
   pendingTag: {
-    color: '#D97706',
+    color: Colors.warning,
     fontWeight: 'bold'
   },
   successText: {
-    color: '#059669',
+    color: Colors.success,
     textAlign: 'center',
     marginVertical: 10,
     lineHeight: 20,

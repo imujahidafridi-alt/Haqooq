@@ -1,15 +1,17 @@
 import React from 'react';
 import { TouchableOpacity, Text, StyleSheet, ActivityIndicator, ViewStyle, TextStyle } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '../../utils/Colors';
 
 interface ButtonProps {
-  title: string;
+  title?: string;
   onPress: () => void;
   variant?: 'primary' | 'secondary' | 'outline' | 'danger';
   isLoading?: boolean;
   disabled?: boolean;
   style?: ViewStyle | ViewStyle[];
   textStyle?: TextStyle | TextStyle[];
+  icon?: keyof typeof Ionicons.glyphMap;
 }
 
 export const Button: React.FC<ButtonProps> = ({
@@ -20,6 +22,7 @@ export const Button: React.FC<ButtonProps> = ({
   disabled = false,
   style,
   textStyle,
+  icon,
 }) => {
   const getVariantStyles = () => {
     switch (variant) {
@@ -45,6 +48,17 @@ export const Button: React.FC<ButtonProps> = ({
     }
   };
 
+  const getIconColor = () => {
+    switch (variant) {
+      case 'outline':
+        return Colors.primary;
+      case 'danger':
+        return Colors.error;
+      default:
+        return '#FFF';
+    }
+  };
+
   return (
     <TouchableOpacity
       style={[styles.base, getVariantStyles(), disabled && styles.disabled, style]}
@@ -55,7 +69,10 @@ export const Button: React.FC<ButtonProps> = ({
       {isLoading ? (
         <ActivityIndicator color={(variant === 'outline') ? Colors.primary : '#FFF'} />
       ) : (
-        <Text style={[styles.baseText, getVariantTextStyles(), textStyle]}>{title}</Text>
+        <>
+          {icon && <Ionicons name={icon} size={20} color={getIconColor()} style={title ? { marginRight: 8 } : {}} />}
+          {title && <Text style={[styles.baseText, getVariantTextStyles(), textStyle]}>{title}</Text>}
+        </>
       )}
     </TouchableOpacity>
   );

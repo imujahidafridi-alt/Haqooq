@@ -1,4 +1,4 @@
-import { collection, addDoc, query, orderBy, onSnapshot, doc, updateDoc, serverTimestamp } from 'firebase/firestore';
+import { collection, addDoc, query, orderBy, onSnapshot, doc, setDoc, updateDoc, serverTimestamp, limit, startAfter, QueryDocumentSnapshot } from 'firebase/firestore';
 import { db } from '../../../services/firebaseConfig';
 
 export interface ChatMessage {
@@ -28,10 +28,11 @@ export const sendMessage = async (chatId: string, senderId: string, text: string
 
     // Update parent document's read preview
     const chatRef = doc(db, 'chats', chatId);
-    await updateDoc(chatRef, {
+    await setDoc(chatRef, {
       lastMessage: text,
-      updatedAt: serverTimestamp()
-    });
+      updatedAt: serverTimestamp(),
+      participants: [senderId] // ensure participants exist partially (will append nicely if we set more robust setDoc later, or rely on initialization)
+    }, { merge: true });
 
   } catch (error) {
     console.error("Failed to send message:", error);
@@ -41,18 +42,30 @@ export const sendMessage = async (chatId: string, senderId: string, text: string
 
 /**
  * Returns an unsubscribe listener function for frontend components 
- * to handle real-time changes instantly.
+ * with pagination support (Enterprise Standard).
  */
 export const listenToMessages = (
   chatId: string, 
-  callback: (messages: ChatMessage[], fromCache: boolean) => void
+  callback: (messages: ChatMessage[], fromCache: boolean, lastVisible: QueryDocumentSnapshot | null) => void,
+  messageLimit: number = 50,
+  startAfterDoc?: QueryDocumentSnapshot | null
 ) => {
-  const q = query(
+  let baseQuery = query(
     collection(db, `chats/${chatId}/messages`),
-    orderBy('createdAt', 'asc')
+    orderBy('createdAt', 'desc'),
+    limit(messageLimit)
   );
 
-  return onSnapshot(q, { includeMetadataChanges: true }, (snapshot) => {
+  if (startAfterDoc) {
+    baseQuery = query(
+      collection(db, `chats/${chatId}/messages`),
+      orderBy('createdAt', 'desc'),
+      startAfter(startAfterDoc),
+      limit(messageLimit)
+    );
+  }
+
+  return onSnapshot(baseQuery, { includeMetadataChanges: true }, (snapshot) => {
     const msgs: ChatMessage[] = [];
     snapshot.forEach((doc) => {
       const data = doc.data();
@@ -62,9 +75,11 @@ export const listenToMessages = (
         createdAt: data.createdAt ? (data.createdAt.toMillis ? data.createdAt.toMillis() : data.createdAt) : Date.now()
       } as ChatMessage);
     });
-    callback(msgs, snapshot.metadata.fromCache);
+
+    const lastVisible = snapshot.docs[snapshot.docs.length - 1] || null;
+    callback(msgs.reverse(), snapshot.metadata.fromCache, lastVisible);
   }, (error) => {
     console.warn("Realtime listen detached or failed:", error);
-    callback([], false);
+    callback([], false, null);
   });
 };

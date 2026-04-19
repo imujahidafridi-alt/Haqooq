@@ -1,7 +1,7 @@
 import * as Device from 'expo-device';
 import * as Notifications from 'expo-notifications';
 import { Platform } from 'react-native';
-import { doc, updateDoc } from 'firebase/firestore';
+import { doc, updateDoc, collection, addDoc, serverTimestamp } from 'firebase/firestore';
 import { db } from './firebaseConfig';
 
 Notifications.setNotificationHandler({
@@ -56,3 +56,26 @@ export async function registerForPushNotificationsAsync(userId: string) {
 
   return token;
 }
+
+/**
+ * Enterprise trigger for Push Notification via Firebase Functions.
+ * Appends a document to 'notifications' which a Cloud Function listens to and dispatches.
+ */
+export const triggerPushNotification = async (targetUserId: string, title: string, body: string, data?: any) => {
+  try {
+    const notificationsRef = collection(db, 'notifications');
+    await addDoc(notificationsRef, {
+      userId: targetUserId,
+      title,
+      body,
+      data: data || {},
+      status: 'pending',
+      createdAt: serverTimestamp()
+    });
+    console.log('[NotificationService] Queued Notification for', targetUserId);
+  } catch (error) {
+    console.warn('[NotificationService] Failed to queue Push Notification', error);
+  }
+};
+
+

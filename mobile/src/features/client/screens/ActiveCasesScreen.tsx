@@ -1,7 +1,8 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, FlatList, TouchableOpacity, ActivityIndicator } from 'react-native';
+import { View, Text, StyleSheet, FlatList, TouchableOpacity, ActivityIndicator, Alert } from 'react-native';
 import { collection, query, where, onSnapshot } from 'firebase/firestore';
 import { db } from '../../../services/firebaseConfig';
+import { closeCase } from '../services/caseService';
 import { LegalCase } from '../../../types/models';
 import { useAuthStore } from '../../../store/authStore';
 import { Colors } from '../../../utils/Colors';
@@ -44,6 +45,28 @@ export const ActiveCasesScreen: React.FC<Props> = ({ navigation }) => {
 
     return () => unsubscribe();
   }, [user]);
+
+  const handleCloseCase = (caseId: string) => {
+    Alert.alert(
+      "Close Case",
+      "Are you sure you want to resolve and clear this case? This action cannot be undone.",
+      [
+        { text: "Cancel", style: "cancel" },
+        { 
+          text: "Close Case", 
+          style: "destructive",
+          onPress: async () => {
+            try {
+              await closeCase(caseId, 'Client');
+              Alert.alert('Success', 'Your case has been completely resolved and closed.');
+            } catch (e) {
+              Alert.alert('Error', 'Unable to close the case right now.');
+            }
+          }
+        }
+      ]
+    );
+  };
 
   const renderTimeline = (c: LegalCase) => {
     return (
@@ -88,11 +111,28 @@ export const ActiveCasesScreen: React.FC<Props> = ({ navigation }) => {
 
       {item.status === 'active' && item.assignedLawyerId && (
         <View style={styles.cardFooter}>
-          <Button 
-            title="Chat with Lawyer" 
-            onPress={() => navigation.navigate('SharedChat', { screen: 'ChatRoom', params: { caseId: item.id } })}
-            variant="outline"
-          />
+          <View style={{ flexDirection: 'row', width: '100%', alignItems: 'center' }}>
+            <Button 
+              title="Chat Lawyer" 
+              icon="chatbubble-ellipses-outline"
+              onPress={() => navigation.navigate('SharedChat', { screen: 'ChatRoom', params: { caseId: item.id } })}
+              variant="outline"
+              style={{ flex: 1, marginRight: 8, height: 48, paddingHorizontal: 12 }}
+            />
+            <Button 
+              icon="checkmark-circle-outline" 
+              onPress={() => handleCloseCase(item.id)}
+              style={{ width: 48, minWidth: 48, height: 48, paddingHorizontal: 0, backgroundColor: Colors.error, borderColor: Colors.error, flexShrink: 0 }}
+            />
+          </View>
+        </View>
+      )}
+
+      {item.status === 'closed' && (
+        <View style={styles.cardFooter}>
+           <Text style={{color: Colors.error, fontWeight: 'bold', textAlign: 'center', flex: 1}}>
+             This case has been resolved and permanently closed.
+           </Text>
         </View>
       )}
     </View>

@@ -1,7 +1,7 @@
 import { collection, addDoc, doc, updateDoc, increment } from 'firebase/firestore';
 import { db } from '../../../services/firebaseConfig';
 
-export type TransactionType = 'premium_profile' | 'keyword_boost' | 'bidding_credits';
+export type TransactionType = 'premium_profile' | 'bidding_credits';
 
 export interface PaymentIntent {
   userId: string;
@@ -83,9 +83,6 @@ class PaymentService {
         case 'bidding_credits':
           const creditsPurchased = Math.floor(intent.amount / 10);
           await updateDoc(userRef, { biddingCredits: increment(creditsPurchased) });
-          break;
-        case 'keyword_boost':
-          if (!intent.metadata?.keyword) throw new Error("Keyword strictly required for boost purchase.");
           break;
       }
     } catch (e) {

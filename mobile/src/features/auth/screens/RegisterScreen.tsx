@@ -2,8 +2,9 @@ import React, { useState } from 'react';
 import {
   View, StyleSheet, TextInput, Text, Alert,
   TouchableOpacity, ActivityIndicator, KeyboardAvoidingView,
-  Platform, TouchableWithoutFeedback, Keyboard, SafeAreaView, ScrollView
+  Platform, TouchableWithoutFeedback, Keyboard, ScrollView
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useAuthStore } from '../../../store/authStore';
 import { registerUser, signInWithGoogleCredential } from '../services/authService';
 import { UserRole } from '../../../types/models';
@@ -16,9 +17,14 @@ export const RegisterScreen = ({ navigation }: any) => {
   const [password, setPassword] = useState('');
   const [displayName, setDisplayName] = useState('');
   const [role, setRole] = useState<UserRole>('client');
+  const [city, setCity] = useState('');
+  const [specialization, setSpecialization] = useState<string>('');
   const [isLocalLoading, setIsLocalLoading] = useState(false);
   const [isGoogleLoading, setIsGoogleLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+
+  const CITIES = ['Lahore', 'Karachi', 'Islamabad', 'Rawalpindi'];
+  const CATEGORIES = ['Family Law', 'Corporate Law', 'Criminal Law', 'Civil Litigation', 'Property / Real Estate Law'];
 
   const { setUser } = useAuthStore();
 
@@ -31,15 +37,34 @@ export const RegisterScreen = ({ navigation }: any) => {
       Alert.alert('Validation Error', 'Please enter email and password.');
       return false;
     }
-    if (password.length < 6) {
-      Alert.alert('Validation Error', 'Password must be at least 6 characters.');
+    
+    // Enterprise stringency: Minimum 8 characters, at least 1 uppercase, 1 lowercase, and 1 number.
+    const strongPasswordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)[a-zA-Z\d\w\W]{8,}$/;
+    if (!strongPasswordRegex.test(password)) {
+      Alert.alert(
+        'Weak Password',
+        'Password must be at least 8 characters long and include an uppercase letter, a lowercase letter, and a number.'
+      );
       return false;
     }
+    
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(email)) {
       Alert.alert('Validation Error', 'Please enter a valid email address.');
       return false;
     }
+
+    if (role === 'lawyer') {
+      if (!city) {
+        Alert.alert('Validation Error', 'Please select your city.');
+        return false;
+      }
+      if (!specialization) {
+        Alert.alert('Validation Error', 'Please select your specialization category.');
+        return false;
+      }
+    }
+
     return true;
   };
 
@@ -51,7 +76,7 @@ export const RegisterScreen = ({ navigation }: any) => {
       const idToken = userInfo.data?.idToken;
 
       if (idToken) {
-        const profile = await signInWithGoogleCredential(idToken, role);
+        const profile = await signInWithGoogleCredential(idToken, role, true);
         setUser(profile);
       } else {
         throw new Error('Google Sign-In failed to return an ID token.');
@@ -80,7 +105,14 @@ export const RegisterScreen = ({ navigation }: any) => {
     try {
       Keyboard.dismiss();
       setIsLocalLoading(true);
-      const profile = await registerUser(email, password, role, displayName);
+      const profile = await registerUser(
+        email, 
+        password, 
+        role, 
+        displayName,
+        role === 'lawyer' ? city : undefined,
+        role === 'lawyer' ? [specialization] : undefined
+      );
       setUser(profile);
     } catch (error: any) {
       Alert.alert("Registration Failed", handleAuthError(error));
@@ -174,6 +206,38 @@ export const RegisterScreen = ({ navigation }: any) => {
                   <Ionicons name={showPassword ? "eye-outline" : "eye-off-outline"} size={20} color="#64748B" />
                 </TouchableOpacity>
               </View>
+
+              {role === 'lawyer' && (
+                <View style={styles.lawyerSetupContainer}>
+                  <Text style={styles.sectionTitle}>Lawyer Details</Text>
+                  
+                  <Text style={styles.label}>Select City</Text>
+                  <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.chipScroll}>
+                    {CITIES.map((c) => (
+                      <TouchableOpacity
+                        key={c}
+                        style={[styles.chip, city === c && styles.chipActive]}
+                        onPress={() => setCity(c)}
+                      >
+                        <Text style={[styles.chipText, city === c && styles.chipTextActive]}>{c}</Text>
+                      </TouchableOpacity>
+                    ))}
+                  </ScrollView>
+
+                  <Text style={styles.label}>Select Specialization</Text>
+                  <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.chipScroll}>
+                    {CATEGORIES.map((cat) => (
+                      <TouchableOpacity
+                        key={cat}
+                        style={[styles.chip, specialization === cat && styles.chipActive]}
+                        onPress={() => setSpecialization(cat)}
+                      >
+                        <Text style={[styles.chipText, specialization === cat && styles.chipTextActive]}>{cat}</Text>
+                      </TouchableOpacity>
+                    ))}
+                  </ScrollView>
+                </View>
+              )}
 
               <TouchableOpacity 
                 style={[styles.primaryBtn, isLoading && styles.primaryBtnDisabled]} 
@@ -401,5 +465,51 @@ const styles = StyleSheet.create({
     color: '#1A365D',
     fontSize: 15,
     fontWeight: '700',
+  },
+  lawyerSetupContainer: {
+    marginBottom: 20,
+    padding: 16,
+    backgroundColor: '#F8FAFC',
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+  },
+  sectionTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#0F172A',
+    marginBottom: 12,
+  },
+  label: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#475569',
+    marginTop: 8,
+    marginBottom: 8,
+  },
+  chipScroll: {
+    flexDirection: 'row',
+    marginBottom: 8,
+  },
+  chip: {
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 20,
+    backgroundColor: '#fff',
+    borderWidth: 1,
+    borderColor: '#CBD5E1',
+    marginRight: 8,
+  },
+  chipActive: {
+    backgroundColor: '#1A365D',
+    borderColor: '#1A365D',
+  },
+  chipText: {
+    fontSize: 14,
+    color: '#475569',
+    fontWeight: '500',
+  },
+  chipTextActive: {
+    color: '#fff',
   }
 });

@@ -63,7 +63,7 @@ export const SearchScreen: React.FC<Props> = ({ navigation }) => {
       <Text style={styles.cardSubtitle}>{item.city} • {item.experienceYears} Years Exp</Text>
       
       <View style={styles.pillContainer}>
-        {item.specialization.map(spec => (
+        {(item.specialization || []).map(spec => (
           <View key={spec} style={styles.pill}>
             <Text style={styles.pillText}>{spec}</Text>
           </View>

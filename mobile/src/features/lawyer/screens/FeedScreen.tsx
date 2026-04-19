@@ -1,15 +1,17 @@
 import React, { useEffect, useState } from 'react';
-import { View, StyleSheet, Text, FlatList, ActivityIndicator, Modal, Alert } from 'react-native';
+import { View, StyleSheet, Text, FlatList, ActivityIndicator, Modal, Alert, KeyboardAvoidingView, Platform, Keyboard, TouchableWithoutFeedback } from 'react-native';
 import { Card } from '../../../components/ui/Card';
 import { Button } from '../../../components/ui/Button';
 import { Input } from '../../../components/ui/Input';
-import { getOpenCases, submitProposal } from '../services/marketplaceService';
+import { getOpenCases, submitProposal, getLawyerBiddedCaseIds } from '../services/marketplaceService';
 import { LegalCase } from '../../../types/models';
 import { useAuthStore } from '../../../store/authStore';
+import { Colors } from '../../../utils/Colors';
 
 export const FeedScreen = () => {
   const { user } = useAuthStore();
   const [cases, setCases] = useState<LegalCase[]>([]);
+  const [biddedCaseIds, setBiddedCaseIds] = useState<Set<string>>(new Set());
   const [loading, setLoading] = useState(true);
 
   // Bidding Modal State
@@ -21,8 +23,12 @@ export const FeedScreen = () => {
 
   const fetchCases = async () => {
     setLoading(true);
-    const data = await getOpenCases();
+    const [data, bids] = await Promise.all([
+      getOpenCases(),
+      user ? getLawyerBiddedCaseIds(user.id) : Promise.resolve([])
+    ]);
     setCases(data);
+    setBiddedCaseIds(new Set(bids));
     setLoading(false);
   };
 
@@ -59,8 +65,12 @@ export const FeedScreen = () => {
       Alert.alert('Success', 'Your proposal has been successfully submitted to the client.');
       closeBidModal();
       
-      // Optionally remove the case from the feed as we already bid on it
-      setCases((prev) => prev.filter(c => c.id !== selectedCase!.id));
+      // Update local state without removing from feed entirely (so they can see what they bid on)
+      setBiddedCaseIds((prev) => {
+        const newSet = new Set(prev);
+        newSet.add(selectedCase!.id);
+        return newSet;
+      });
       
     } catch (error: any) {
       Alert.alert('Error', error.message);
@@ -69,32 +79,37 @@ export const FeedScreen = () => {
     }
   };
 
-  const renderCase = ({ item }: { item: LegalCase }) => (
-    <Card style={styles.card}>
-      <View style={styles.cardHeader}>
-        <Text style={styles.title}>{item.title}</Text>
-        <Text style={styles.categoryBadge}>{item.category}</Text>
-      </View>
-      <Text style={styles.description} numberOfLines={3}>{item.description}</Text>
-      
-      <View style={styles.footerRow}>
-        <Text style={styles.budget}>
-          Budget: {item.budget ? `Rs. ${item.budget}` : 'Negotiable'}
-        </Text>
-        <Button 
-          title="Submit Bid" 
-          onPress={() => openBidModal(item)}
-          style={styles.bidButton}
-          textStyle={styles.bidButtonText}
-        />
-      </View>
-    </Card>
-  );
+  const renderCase = ({ item }: { item: LegalCase }) => {
+    const hasBid = biddedCaseIds.has(item.id);
+    return (
+      <Card style={styles.card}>
+        <View style={styles.cardHeader}>
+          <Text style={styles.title}>{item.title}</Text>
+          <Text style={styles.categoryBadge}>{item.category}</Text>
+        </View>
+        <Text style={styles.clientName}>Posted by: {item.clientName || 'Anonymous Client'}</Text>
+        <Text style={styles.description}>{item.description}</Text>
+        
+        <View style={styles.footerRow}>
+          <Text style={styles.budget}>
+            Budget: {item.budget ? `Rs. ${item.budget}` : 'Negotiable'}
+          </Text>
+          <Button 
+            title={hasBid ? "Bid Sent ✓" : "Submit Bid"} 
+            onPress={() => openBidModal(item)}
+            disabled={hasBid}
+            style={[styles.bidButton, hasBid ? { backgroundColor: Colors.success } : {}]}
+            textStyle={styles.bidButtonText}
+          />
+        </View>
+      </Card>
+    );
+  };
 
   return (
     <View style={styles.container}>
       {loading ? (
-        <ActivityIndicator size="large" color="#5856D6" style={{ marginTop: 50 }} />
+        <ActivityIndicator size="large" color={Colors.primary} style={{ marginTop: 50 }} />
       ) : (
         <FlatList
           data={cases}
@@ -111,7 +126,15 @@ export const FeedScreen = () => {
 
       {/* Proposal Submission Modal */}
       <Modal visible={isModalVisible} animationType="slide" transparent>
-        <View style={styles.modalOverlay}>
+        <KeyboardAvoidingView 
+          style={styles.modalOverlay}
+          behavior={Platform.OS === 'ios' ? 'padding' : 'padding'}
+          keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : -20}
+        >
+          <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+            <View style={{ flex: 1 }} />
+          </TouchableWithoutFeedback>
+
           <View style={styles.modalContent}>
             <Text style={styles.modalTitle}>Submit Proposal</Text>
             <Text style={styles.modalSub}>For: {selectedCase?.title}</Text>
@@ -146,11 +169,11 @@ export const FeedScreen = () => {
                 variant="primary" 
                 onPress={handleBidSubmit}
                 isLoading={isSubmitting}
-                style={{ flex: 1, marginLeft: 8, backgroundColor: '#5856D6' }}
+                style={{ flex: 1, marginLeft: 8, backgroundColor: Colors.primary }}
               />
             </View>
           </View>
-        </View>
+        </KeyboardAvoidingView>
       </Modal>
     </View>
   );
@@ -160,11 +183,19 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     padding: 16,
-    backgroundColor: '#F5f5f5',
+    backgroundColor: Colors.background,
   },
   card: {
     marginBottom: 16,
-    padding: 16
+    padding: 16,
+    backgroundColor: Colors.surface,
+    borderColor: Colors.border,
+    borderWidth: 1,
+    shadowColor: Colors.text,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 2,
   },
   cardHeader: {
     flexDirection: 'row',
@@ -177,11 +208,13 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     flex: 1,
     marginRight: 8,
-    color: '#333'
+    color: Colors.primary
   },
   categoryBadge: {
-    backgroundColor: '#E8EAF6',
-    color: '#3F51B5',
+    backgroundColor: Colors.background,
+    color: Colors.secondary,
+    borderColor: Colors.secondary,
+    borderWidth: 1,
     paddingHorizontal: 8,
     paddingVertical: 4,
     borderRadius: 4,
@@ -189,9 +222,17 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     overflow: 'hidden'
   },
+  clientName: {
+    fontSize: 12,
+    fontWeight: '500',
+    color: Colors.primary,
+    opacity: 0.8,
+    marginBottom: 10,
+    fontStyle: 'italic'
+  },
   description: {
     fontSize: 14,
-    color: '#666',
+    color: Colors.textSecondary,
     marginBottom: 16,
     lineHeight: 20
   },
@@ -200,26 +241,28 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     borderTopWidth: 1,
-    borderTopColor: '#EEE',
+    borderTopColor: Colors.border,
     paddingTop: 12
   },
   budget: {
     fontSize: 14,
     fontWeight: 'bold',
-    color: '#2E7D32'
+    color: Colors.success
   },
   bidButton: {
-    backgroundColor: '#5856D6',
+    backgroundColor: Colors.primary,
     paddingVertical: 8,
     paddingHorizontal: 16,
-    marginVertical: 0
+    marginVertical: 0,
+    borderRadius: 8,
   },
   bidButtonText: {
-    fontSize: 14
+    fontSize: 14,
+    color: Colors.surface
   },
   emptyText: {
     textAlign: 'center',
-    color: '#888',
+    color: Colors.textSecondary,
     marginTop: 40,
     fontSize: 16
   },
@@ -230,7 +273,7 @@ const styles = StyleSheet.create({
     justifyContent: 'flex-end'
   },
   modalContent: {
-    backgroundColor: '#FFF',
+    backgroundColor: Colors.surface,
     padding: 24,
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
@@ -239,11 +282,12 @@ const styles = StyleSheet.create({
   modalTitle: {
     fontSize: 22,
     fontWeight: 'bold',
-    marginBottom: 4
+    marginBottom: 4,
+    color: Colors.primary
   },
   modalSub: {
     fontSize: 14,
-    color: '#666',
+    color: Colors.textSecondary,
     marginBottom: 20
   },
   modalActions: {

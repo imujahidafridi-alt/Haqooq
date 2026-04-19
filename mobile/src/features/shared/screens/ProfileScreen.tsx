@@ -144,37 +144,41 @@ export const ProfileScreen = () => {
             value={displayName}
             onChangeText={setDisplayName}
             placeholder="e.g. John Doe"
-          />
+              placeholderTextColor="#94A3B8"
+            />
+  
+            <Text style={styles.label}>Phone Number</Text>
+            <TextInput
+              style={styles.input}
+              value={phone}
+              onChangeText={setPhone}
+              placeholder="e.g. +92 300 1234567"
+              keyboardType="phone-pad"
+              placeholderTextColor="#94A3B8"
+            />
+  
+            {profile?.role === 'lawyer' && (
+              <>
+                <Text style={styles.label}>City (Operational Area)</Text>
+                <TextInput
+                  style={styles.input}
+                  value={city}
+                  onChangeText={setCity}
+                  placeholder="e.g. Lahore"
+                  placeholderTextColor="#94A3B8"
+                />
 
-          <Text style={styles.label}>Phone Number</Text>
-          <TextInput
-            style={styles.input}
-            value={phone}
-            onChangeText={setPhone}
-            placeholder="e.g. +92 300 1234567"
-            keyboardType="phone-pad"
-          />
-
-          {profile?.role === 'lawyer' && (
-            <>
-              <Text style={styles.label}>City (Operational Area)</Text>
-              <TextInput
-                style={styles.input}
-                value={city}
-                onChangeText={setCity}
-                placeholder="e.g. Lahore"
-              />
-
-              <Text style={styles.label}>Experience (Years)</Text>
-              <TextInput
-                style={styles.input}
-                value={experience}
-                onChangeText={setExperience}
-                placeholder="e.g. 5"
-                keyboardType="number-pad"
-              />
-            </>
-          )}
+                <Text style={styles.label}>Experience (Years)</Text>
+                <TextInput
+                  style={styles.input}
+                  value={experience}
+                  onChangeText={setExperience}
+                  placeholder="e.g. 5"
+                  keyboardType="number-pad"
+                  placeholderTextColor="#94A3B8"
+                />
+              </>
+            )}
 
           <Button 
             title={saving ? "Syncing..." : "Update Profile"}

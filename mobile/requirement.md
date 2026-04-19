@@ -39,7 +39,7 @@ To future-proof the application, all financial transactions will be routed throu
 * **Dummy Mode (Current State):** The interface will process mock transactions using test cards, simulating successful or failed network responses without processing real money. 
 * **Monetization Triggers:** The dummy service will mock transactions for the following lawyer actions:
     * [cite_start]Purchasing a Premium profile or Featured listing[cite: 101, 102, 104].
-    * [cite_start]Paying for Keyword ranking boosts[cite: 103].
+
     * [cite_start]Purchasing Bidding credits[cite: 105].
     * [cite_start]Platform extracting a Commission per client acquired[cite: 106].
 

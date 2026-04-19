@@ -2,8 +2,9 @@ import React, { useState } from 'react';
 import {
   View, StyleSheet, TextInput, Text, Alert,
   TouchableOpacity, ActivityIndicator, KeyboardAvoidingView,
-  Platform, TouchableWithoutFeedback, Keyboard, Image, SafeAreaView
+  Platform, TouchableWithoutFeedback, Keyboard, Image
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useAuthStore } from '../../../store/authStore';
 import { loginUser, signInWithGoogleCredential } from '../services/authService';
 import { GoogleSignin, statusCodes, isErrorWithCode } from '@react-native-google-signin/google-signin';
@@ -40,7 +41,7 @@ export const LoginScreen = ({ navigation }: any) => {
       const idToken = userInfo.data?.idToken;
 
       if (idToken) {
-        const profile = await signInWithGoogleCredential(idToken);
+        const profile = await signInWithGoogleCredential(idToken, undefined, false);
         setUser(profile);
       } else {
         throw new Error('Google Sign-In completed but failed to return a secure ID token. This is usually due to missing SHA-1 fingerprint in Firebase.');
@@ -130,7 +131,11 @@ export const LoginScreen = ({ navigation }: any) => {
                 </TouchableOpacity>
               </View>
 
-              <TouchableOpacity style={styles.forgotPassword} disabled={isLoading}>
+              <TouchableOpacity 
+                style={styles.forgotPassword} 
+                disabled={isLoading}
+                onPress={() => navigation.navigate('ForgotPassword')}
+              >
                 <Text style={styles.forgotPasswordText}>Forgot Password?</Text>
               </TouchableOpacity>
 

@@ -28,6 +28,7 @@ export interface LawyerProfile extends UserProfile {
 export interface LegalCase {
   id: string;
   clientId: string;
+  clientName: string; // Added to distinguish the creator
   assignedLawyerId?: string;
   title: string;
   description: string;
