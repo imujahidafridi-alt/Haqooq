@@ -135,7 +135,30 @@ export const onUserUpdate = functions.firestore.document('users/{userId}')
   });
 
 /**
- * 3. Push Notification Triggers (Timeline Update)
+ * 3. Immutable Backend Audit Logging
+ * Securely logs every critical state change (e.g. Case Open -> Active) using an append-only structure.
+ */
+export const onCaseStateChangeAudit = functions.firestore.document('cases/{caseId}')
+  .onUpdate(async (change, context) => {
+    const beforeStats = change.before.data();
+    const afterStats = change.after.data();
+
+    if (beforeStats.status !== afterStats.status) {
+      await admin.firestore().collection('audit_logs').add({
+        action: 'CASE_STATUS_CHANGE',
+        entityId: context.params.caseId,
+        entityType: 'case',
+        previousState: beforeStats.status || 'unknown',
+        newState: afterStats.status,
+        timestamp: admin.firestore.FieldValue.serverTimestamp(),
+        // Since it's a backend trigger we infer the actor based on state logic
+        actorId: afterStats.status === 'closed' ? afterStats.assignedLawyerId : afterStats.clientId,
+      });
+    }
+  });
+
+/**
+ * 4. Push Notification Triggers (Timeline Update)
  * When a lawyer pushes a case timeline event, notify the client.
  */
 export const onCaseUpdate = functions.firestore.document('cases/{caseId}')

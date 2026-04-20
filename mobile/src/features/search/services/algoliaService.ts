@@ -1,6 +1,7 @@
 import { LawyerProfile } from '../../../types/models';
 import { collection, query, where, getDocs } from 'firebase/firestore';
 import { db } from '../../../services/firebaseConfig';
+import { searchFiltersSchema, lawyerProfileSchema } from '../../../types/schemas';
 
 export interface SearchFilters {
   query: string;
@@ -13,8 +14,10 @@ export interface SearchFilters {
  * Searches the Firestore for lawyers using explicitly provided query filters.
  * Replaces the mock Algolia integration.
  */
-export const executeAlgoliaSearch = async (filters: SearchFilters): Promise<LawyerProfile[]> => {
+export const executeAlgoliaSearch = async (rawFilters: SearchFilters): Promise<LawyerProfile[]> => {
   try {
+    const filters = searchFiltersSchema.parse(rawFilters);
+
     let q = query(
       collection(db, 'users'),
       where('role', '==', 'lawyer'),
@@ -25,7 +28,13 @@ export const executeAlgoliaSearch = async (filters: SearchFilters): Promise<Lawy
     let results: LawyerProfile[] = [];
 
     snapshot.forEach((doc) => {
-      results.push(doc.data() as LawyerProfile);
+      // Validate schema via Zod to gracefully handle malformed data
+      const parsed = lawyerProfileSchema.safeParse(doc.data());
+      if (parsed.success) {
+        results.push(parsed.data as LawyerProfile);
+      } else {
+        console.warn(`Invalid LawyerProfile schema detected for document ${doc.id}:`, parsed.error);
+      }
     });
 
     // Client-side filtering due to Firestore compound query limitations

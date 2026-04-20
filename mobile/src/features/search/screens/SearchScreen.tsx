@@ -7,6 +7,7 @@ import { executeAlgoliaSearch, SearchFilters } from '../services/algoliaService'
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { LawyerProfile } from '../../../types/models';
 import { Button } from '../../../components/ui/Button';
+import { useQuery } from '@tanstack/react-query';
 
 // Define expected params, add real ones based on your navigator setup
 type RootStackParamList = {
@@ -24,35 +25,36 @@ interface Props {
 const CATEGORIES = ['All', 'Family Law', 'Corporate Law', 'Criminal Law', 'Civil Litigation', 'Property / Real Estate Law'];
 const CITIES = ['Lahore', 'Karachi', 'Islamabad', 'Rawalpindi'];
 
+import { useAuthStore } from '../../../store/authStore';
+
+// Custom hook to debounce values preventing excessive query fetches
+function useDebounce<T>(value: T, delay: number): T {
+  const [debouncedValue, setDebouncedValue] = useState<T>(value);
+  useEffect(() => {
+    const handler = setTimeout(() => setDebouncedValue(value), delay);
+    return () => clearTimeout(handler);
+  }, [value, delay]);
+  return debouncedValue;
+}
+
 export const SearchScreen: React.FC<Props> = ({ navigation }) => {
-  const [query, setQuery] = useState('');
+  const { user } = useAuthStore();
+  const [queryInput, setQueryInput] = useState('');
   const [activeCategory, setActiveCategory] = useState<string>('All');
   const [activeCity, setActiveCity] = useState<string>('');
   
-  const [results, setResults] = useState<LawyerProfile[]>([]);
-  const [loading, setLoading] = useState(false);
+  const debouncedQuery = useDebounce(queryInput, 400);
 
-  const fetchResults = async () => {
-    setLoading(true);
-    try {
-      const filters: SearchFilters = { query, category: activeCategory, city: activeCity };
-      const hits = await executeAlgoliaSearch(filters);
-      setResults(hits);
-    } catch (e) {
-      console.error(e);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    // Debounce simulating an Algolia 'instant-search' component
-    const timeout = setTimeout(() => {
-      fetchResults();
-    }, 400);
-
-    return () => clearTimeout(timeout);
-  }, [query, activeCategory, activeCity]);
+  // TanStack React Query for seamless caching and background refetching
+  const { data: results = [], isLoading, isError } = useQuery({
+    queryKey: ['lawyersSearch', debouncedQuery, activeCategory, activeCity],
+    queryFn: () => executeAlgoliaSearch({ 
+      query: debouncedQuery, 
+      category: activeCategory, 
+      city: activeCity 
+    }),
+    staleTime: 1000 * 60 * 5, // Data stays fresh for 5 minutes (saves massive reads)
+  });
 
   const renderLawyer = ({ item }: { item: LawyerProfile }) => (
     <View style={styles.card}>
@@ -72,7 +74,20 @@ export const SearchScreen: React.FC<Props> = ({ navigation }) => {
 
       <View style={styles.cardFooter}>
          <Text style={styles.ratingText}>⭐ {item.rating?.toFixed(1) || '0.0'}</Text>
-         <Button title="View & Chat" onPress={() => console.log('Navigate to profile', item.id)} variant="outline" style={{ paddingVertical: 6, paddingHorizontal: 12 }} />
+         <Button 
+            title="Chat Now" 
+            onPress={() => {
+              if (!user) return;
+              // Generate a deterministic chat ID pairing the client and lawyer directly
+              const directChatId = `direct-${user.id}-${item.id}`;
+              navigation.navigate('SharedChat', { 
+                screen: 'ChatRoom', 
+                params: { chatId: directChatId, chatTitle: `Chat with ${item.displayName || 'Lawyer'}` } 
+              });
+            }} 
+            variant="outline" 
+            style={{ paddingVertical: 6, paddingHorizontal: 12 }} 
+         />
       </View>
     </View>
   );
@@ -83,8 +98,8 @@ export const SearchScreen: React.FC<Props> = ({ navigation }) => {
         <TextInput
           style={styles.searchInput}
           placeholder="Search lawyers by name or specialty..."
-          value={query}
-          onChangeText={setQuery}
+          value={queryInput}
+          onChangeText={setQueryInput}
           placeholderTextColor="#999"
         />
       </View>
@@ -127,9 +142,13 @@ export const SearchScreen: React.FC<Props> = ({ navigation }) => {
       </View>
 
 
-      {loading ? (
+      {isLoading ? (
         <View style={styles.centered}>
           <ActivityIndicator size="large" color={Colors.primary} />
+        </View>
+      ) : isError ? (
+        <View style={styles.centered}>
+          <Text style={Typography.body}>Error connecting to server. Attempting to reload...</Text>
         </View>
       ) : (
         <FlatList
@@ -159,6 +178,11 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.surface,
     borderBottomWidth: 1,
     borderBottomColor: Colors.border,
+  },
+  centered: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   searchInput: {
     backgroundColor: '#F0F0F0',
@@ -263,11 +287,6 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
     color: Colors.text,
-  },
-  centered: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
   },
   emptyContainer: {
     padding: 24,

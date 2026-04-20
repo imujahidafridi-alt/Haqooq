@@ -30,7 +30,9 @@
     },
     "plugins": [
       "expo-web-browser",
-      "@react-native-google-signin/google-signin"
+      "@react-native-google-signin/google-signin",
+      "sentry-expo",
+      "@sentry/react-native"
     ]
   }
 }

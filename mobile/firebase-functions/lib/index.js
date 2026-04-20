@@ -23,7 +23,7 @@ var __importStar = (this && this.__importStar) || function (mod) {
     return result;
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.onCaseUpdate = exports.onUserUpdate = exports.classifyCaseAI = void 0;
+exports.onCaseUpdate = exports.onCaseStateChangeAudit = exports.onUserUpdate = exports.classifyCaseAI = void 0;
 const functions = __importStar(require("firebase-functions"));
 const admin = __importStar(require("firebase-admin"));
 // Use named import for algoliasearch v5 compatibility
@@ -36,29 +36,81 @@ const ALGOLIA_INDEX_NAME = 'lawyers_index';
 const client = (0, algoliasearch_1.algoliasearch)(ALGOLIA_ID, ALGOLIA_ADMIN_KEY);
 /**
  * 1. AI Case Classification (Callable Function)
- * In production, this proxies out to OpenAI/Anthropic securely.
+ * In production, this proxies out to Groq securely.
  */
-exports.classifyCaseAI = functions.https.onCall((data, context) => {
+exports.classifyCaseAI = functions.https.onCall(async (data, context) => {
     if (!context.auth) {
         throw new functions.https.HttpsError('unauthenticated', 'Must be logged in to classify cases.');
     }
     const description = data.description || '';
-    const lowerDesc = description.toLowerCase();
-    // NLP Simulation for MVP/V1
-    let category = 'Civil Litigation';
-    if (/(property|land|estate|tenant|evict|lease|mortgage)/.test(lowerDesc)) {
-        category = 'Property / Real Estate Law';
+    if (!description.trim()) {
+        return { category: 'Civil Litigation' };
     }
-    else if (/(divorce|child|marriage|custody|alimony|spouse)/.test(lowerDesc)) {
-        category = 'Family Law';
+    const GROQ_API_KEY = process.env.GROQ_API_KEY || '';
+    if (!GROQ_API_KEY) {
+        console.warn("GROQ_API_KEY is not set. Falling back to NLP simulation.");
+        const lowerDesc = description.toLowerCase();
+        let category = 'Civil Litigation';
+        if (/(property|land|estate|tenant|evict|lease|mortgage)/.test(lowerDesc)) {
+            category = 'Property / Real Estate Law';
+        }
+        else if (/(divorce|child|marriage|custody|alimony|spouse)/.test(lowerDesc)) {
+            category = 'Family Law';
+        }
+        else if (/(business|corporate|contract|fraud|equity|startup)/.test(lowerDesc)) {
+            category = 'Corporate Law';
+        }
+        else if (/(arrest|murder|fraud|police|jail|bail|criminal|theft)/.test(lowerDesc)) {
+            category = 'Criminal Law';
+        }
+        return { category };
     }
-    else if (/(business|corporate|contract|fraud|equity|startup)/.test(lowerDesc)) {
-        category = 'Corporate Law';
+    try {
+        const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+            method: 'POST',
+            headers: {
+                'Authorization': `Bearer ${GROQ_API_KEY}`,
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                model: 'llama3-8b-8192',
+                messages: [
+                    {
+                        role: 'system',
+                        content: 'You are an expert legal AI classifier. Classify the following case description strictly into exactly one of these five categories: Property / Real Estate Law, Family Law, Corporate Law, Criminal Law, Civil Litigation. Respond ONLY with the category name and nothing else.'
+                    },
+                    {
+                        role: 'user',
+                        content: description
+                    }
+                ],
+                temperature: 0.1,
+                max_tokens: 10
+            })
+        });
+        if (!response.ok) {
+            throw new Error(`Groq API error: ${response.statusText}`);
+        }
+        const result = await response.json();
+        let aiCategory = result.choices[0]?.message?.content?.trim();
+        // Sanitize in case model hallucinated punctuation
+        aiCategory = aiCategory.replace(/["']/g, "");
+        const validCategories = [
+            'Property / Real Estate Law',
+            'Family Law',
+            'Corporate Law',
+            'Criminal Law',
+            'Civil Litigation'
+        ];
+        if (!validCategories.includes(aiCategory)) {
+            aiCategory = 'Civil Litigation'; // Fallback
+        }
+        return { category: aiCategory };
     }
-    else if (/(arrest|murder|fraud|police|jail|bail|criminal|theft)/.test(lowerDesc)) {
-        category = 'Criminal Law';
+    catch (error) {
+        console.error("Groq AI Error:", error);
+        return { category: 'Civil Litigation' }; // Fallback on failure
     }
-    return { category };
 });
 /**
  * 2. Sync Verified Lawyers to Algolia
@@ -95,7 +147,28 @@ exports.onUserUpdate = functions.firestore.document('users/{userId}')
     }
 });
 /**
- * 3. Push Notification Triggers (Timeline Update)
+ * 3. Immutable Backend Audit Logging
+ * Securely logs every critical state change (e.g. Case Open -> Active) using an append-only structure.
+ */
+exports.onCaseStateChangeAudit = functions.firestore.document('cases/{caseId}')
+    .onUpdate(async (change, context) => {
+    const beforeStats = change.before.data();
+    const afterStats = change.after.data();
+    if (beforeStats.status !== afterStats.status) {
+        await admin.firestore().collection('audit_logs').add({
+            action: 'CASE_STATUS_CHANGE',
+            entityId: context.params.caseId,
+            entityType: 'case',
+            previousState: beforeStats.status || 'unknown',
+            newState: afterStats.status,
+            timestamp: admin.firestore.FieldValue.serverTimestamp(),
+            // Since it's a backend trigger we infer the actor based on state logic
+            actorId: afterStats.status === 'closed' ? afterStats.assignedLawyerId : afterStats.clientId,
+        });
+    }
+});
+/**
+ * 4. Push Notification Triggers (Timeline Update)
  * When a lawyer pushes a case timeline event, notify the client.
  */
 exports.onCaseUpdate = functions.firestore.document('cases/{caseId}')

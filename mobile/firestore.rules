@@ -59,6 +59,11 @@ service cloud.firestore {
       allow read, update, delete: if false; 
     }
 
+    match /audit_logs/{logId} {
+      allow read: if isAdmin();
+      allow write: if false; // Only Cloud Functions can write to audit logs safely
+    }
+
     match /transactions/{txId} {
       allow read: if resource != null && isOwner(resource.data.userId);
       allow create: if isAuthenticated() && request.resource.data.userId == request.auth.uid;

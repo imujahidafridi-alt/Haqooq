@@ -1,0 +1,4 @@
+# .sentryclirc
+[defaults]
+project=${SENTRY_PROJECT}
+org=${SENTRY_ORG}

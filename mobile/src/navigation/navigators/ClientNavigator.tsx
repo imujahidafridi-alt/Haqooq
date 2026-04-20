@@ -8,11 +8,13 @@ import { SearchScreen } from '../../features/search/screens/SearchScreen';
 import { ActiveCasesScreen } from '../../features/client/screens/ActiveCasesScreen';
 import { ProfileScreen } from '../../features/shared/screens/ProfileScreen';
 import { ProposalsScreen } from '../../features/client/screens/ProposalsScreen';
+import { InboxScreen } from '../../features/chat/screens/InboxScreen';
 
 export type ClientTabParamList = {
   Home: undefined;
   Search: undefined;
   Cases: undefined;
+  Inbox: undefined;
   Profile: undefined;
 };
 
@@ -30,6 +32,7 @@ const ClientTabs = () => {
           if (route.name === 'Home') iconName = focused ? 'home' : 'home-outline';
           else if (route.name === 'Search') iconName = focused ? 'search' : 'search-outline';
           else if (route.name === 'Cases') iconName = focused ? 'briefcase' : 'briefcase-outline';
+          else if (route.name === 'Inbox') iconName = focused ? 'chatbubbles' : 'chatbubbles-outline';
           else if (route.name === 'Profile') iconName = focused ? 'person' : 'person-outline';
 
           return <Ionicons name={iconName} size={size} color={color} />;
@@ -41,6 +44,7 @@ const ClientTabs = () => {
       <Tab.Screen name="Home" component={PostCaseScreen} options={{ title: 'Home' }} />
       <Tab.Screen name="Search" component={SearchScreen} options={{ title: 'Find Lawyer' }} />
       <Tab.Screen name="Cases" component={ActiveCasesScreen} options={{ title: 'My Cases', headerShown: true }} />
+      <Tab.Screen name="Inbox" component={InboxScreen} options={{ title: 'Inbox', headerShown: true }} />
       <Tab.Screen name="Profile" component={ProfileScreen} options={{ title: 'Profile', headerShown: true }} />
     </Tab.Navigator>
   );

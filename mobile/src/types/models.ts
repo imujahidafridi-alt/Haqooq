@@ -58,8 +58,9 @@ export interface CaseProposal {
 
 export interface ChatThread {
   id: string;
-  caseId: string;
+  caseId?: string;
   participants: string[];
   lastMessage: string;
   updatedAt: number;
+  unreadCount?: Record<string, number>;
 }

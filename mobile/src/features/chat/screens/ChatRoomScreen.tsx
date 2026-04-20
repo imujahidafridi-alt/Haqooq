@@ -18,14 +18,23 @@ import { Ionicons } from '@expo/vector-icons';
 import { TouchableOpacity } from 'react-native';
 
 export const ChatRoomScreen = ({ route, navigation }: any) => {
-  // `chatId` and `chatTitle` passed dynamically via navigation params based on the active case
-  const { chatId = 'mock-chat-123', chatTitle = 'Active Case Chat' } = route?.params || {};
+  // Support either `chatId` or `caseId` as a fallback from CasesScreen
+  const paramChatId = route?.params?.chatId;
+  const paramCaseId = route?.params?.caseId;
+  const chatId = paramChatId || paramCaseId || 'mock-chat-123';
+  const chatTitle = route?.params?.chatTitle || 'Active Chat';
+  
   const { user } = useAuthStore();
   
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [newMessage, setNewMessage] = useState('');
   const [isLoading, setIsLoading] = useState(true);
   const [isSending, setIsSending] = useState(false);
+  
+  // Pagination State
+  const [hasMore, setHasMore] = useState(true);
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
+  const startAfterDocRef = useRef<any>(null);
 
   const flatListRef = useRef<FlatList>(null);
 
@@ -33,19 +42,53 @@ export const ChatRoomScreen = ({ route, navigation }: any) => {
     // Dynamically set navigation header
     navigation.setOptions({ title: chatTitle });
 
-    // Attach native Firestore listener.
-    const unsubscribe = listenToMessages(chatId, (msgs, fromCache) => {
-      setMessages(msgs);
-      if (!fromCache || msgs.length > 0) {
-        setIsLoading(false);
-      }
-      // Give UI brief moment to render then scroll to bottom
-      setTimeout(() => flatListRef.current?.scrollToEnd({ animated: true }), 200);
-    });
+    // Initial Load - Fetch first batch
+    const unsubscribe = listenToMessages(
+      chatId, 
+      (msgs, fromCache, lastVisible) => {
+        setMessages(msgs);
+        
+        // Save the cursor position for pagination
+        startAfterDocRef.current = lastVisible;
+        
+        // If we got fewer than 50 messages, there are no more to load
+        if (msgs.length < 50) setHasMore(false);
+
+        if (!fromCache || msgs.length > 0) {
+          setIsLoading(false);
+        }
+      },
+      50, // Initial limit
+      null
+    );
 
     // Cleanup memory when component unmounts
     return () => unsubscribe();
   }, [chatId]);
+
+  const loadMoreMessages = () => {
+    // Note: since flatlist is inverted normally for chats, you might need to handle 'inverted' flatlist logically
+    if (!hasMore || isLoadingMore || messages.length === 0 || !startAfterDocRef.current) return;
+    
+    setIsLoadingMore(true);
+    
+    // Attach listener for the older chunk and merge it to the front of our array
+    listenToMessages(
+      chatId, 
+      (olderMsgs, fromCache, lastVisible) => {
+        if (olderMsgs.length > 0) {
+          setMessages(prev => [...olderMsgs, ...prev]);
+          startAfterDocRef.current = lastVisible;
+          if (olderMsgs.length < 50) setHasMore(false);
+        } else {
+          setHasMore(false);
+        }
+        setIsLoadingMore(false);
+      },
+      50,
+      startAfterDocRef.current
+    );
+  };
 
   const handleSend = async () => {
     if (!newMessage.trim() || !user) return;
@@ -92,6 +135,9 @@ export const ChatRoomScreen = ({ route, navigation }: any) => {
           renderItem={renderItem}
           contentContainerStyle={styles.listContent}
           showsVerticalScrollIndicator={false}
+          onEndReached={loadMoreMessages}
+          onEndReachedThreshold={0.5} // Trigger earlier while user scrolls up
+          ListHeaderComponent={isLoadingMore ? <ActivityIndicator size="small" color={Colors.primary} /> : null}
         />
       )}
 
