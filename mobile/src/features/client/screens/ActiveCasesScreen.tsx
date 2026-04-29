@@ -9,6 +9,7 @@ import { Colors } from '../../../utils/Colors';
 import { Typography } from '../../../utils/Typography';
 import { Button } from '../../../components/ui/Button';
 import { SkeletonCard } from '../../../components/ui/SkeletonCard';
+import { RateLawyerModal } from '../components/RateLawyerModal';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
 interface Props {
@@ -19,6 +20,8 @@ export const ActiveCasesScreen: React.FC<Props> = ({ navigation }) => {
   const { user } = useAuthStore();
   const [cases, setCases] = useState<LegalCase[]>([]);
   const [loading, setLoading] = useState(true);
+  const [ratingCaseId, setRatingCaseId] = useState<string | null>(null);
+  const [ratingLawyerId, setRatingLawyerId] = useState<string | null>(null);
 
   useEffect(() => {
     if (!user) return;
@@ -130,9 +133,17 @@ export const ActiveCasesScreen: React.FC<Props> = ({ navigation }) => {
 
       {item.status === 'closed' && (
         <View style={styles.cardFooter}>
-           <Text style={{color: Colors.error, fontWeight: 'bold', textAlign: 'center', flex: 1}}>
-             This case has been resolved and permanently closed.
-           </Text>
+          {!item.hasBeenRated && item.assignedLawyerId ? (
+            <Button
+              title="Rate Your Lawyer"
+              onPress={() => { setRatingCaseId(item.id); setRatingLawyerId(item.assignedLawyerId!); }}
+              variant="primary"
+            />
+          ) : (
+            <Text style={{color: Colors.success, fontWeight: 'bold', textAlign: 'center', flex: 1}}>
+              Case Closed • Rated
+            </Text>
+          )}
         </View>
       )}
     </View>
@@ -140,6 +151,16 @@ export const ActiveCasesScreen: React.FC<Props> = ({ navigation }) => {
 
   return (
     <View style={styles.container}>
+      {ratingCaseId && ratingLawyerId && (
+        <RateLawyerModal
+          visible={!!ratingCaseId}
+          caseId={ratingCaseId}
+          lawyerId={ratingLawyerId}
+          clientId={user?.id || ''}
+          onClose={() => { setRatingCaseId(null); setRatingLawyerId(null); }}
+          onSuccess={() => { setRatingCaseId(null); setRatingLawyerId(null); }}
+        />
+      )}
       <FlatList
         data={cases}
         keyExtractor={item => item.id}

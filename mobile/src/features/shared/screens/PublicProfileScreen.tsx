@@ -67,6 +67,19 @@ export const PublicProfileScreen = () => {
           {profile.status === 'verified' && <Ionicons name="checkmark-circle" size={20} color={Colors.success} />}
           <Text style={styles.badgeText}>{profile.status === 'verified' ? ' Verified User' : ' Unverified'}</Text>
         </View>
+        {isLawyer && (
+          <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 8 }}>
+            <Ionicons name="star" size={20} color="#FFD700" />
+            <Text style={{ marginLeft: 6, fontSize: 16, fontWeight: 'bold', color: Colors.text }}>
+              {lawyerData.rating ? lawyerData.rating.toFixed(1) : 'No Ratings Yet'}
+            </Text>
+            {lawyerData.ratingCount !== undefined && lawyerData.ratingCount > 0 && (
+              <Text style={{ marginLeft: 4, fontSize: 14, color: Colors.textSecondary }}>
+                ({lawyerData.ratingCount} reviews)
+              </Text>
+            )}
+          </View>
+        )}
       </View>
 
       <Card style={styles.card}>

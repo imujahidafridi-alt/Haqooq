@@ -21,6 +21,7 @@ export interface LawyerProfile extends UserProfile {
   experienceYears: number;
   city: string;
   rating?: number;
+  ratingCount?: number;
   isPremium: boolean;
   biddingCredits: number;
 }
@@ -35,6 +36,7 @@ export interface LegalCase {
   category: string;
   budget?: number;
   status: 'open' | 'active' | 'closed';
+  hasBeenRated?: boolean;
   timeline: TimelineEvent[];
   createdAt: number;
 }
@@ -63,4 +65,14 @@ export interface ChatThread {
   lastMessage: string;
   updatedAt: number;
   unreadCount?: Record<string, number>;
+}
+
+export interface Review {
+  id: string;
+  caseId: string;
+  lawyerId: string;
+  clientId: string;
+  rating: number;
+  reviewText?: string;
+  createdAt: number;
 }
