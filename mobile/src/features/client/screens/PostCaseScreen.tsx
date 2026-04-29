@@ -118,7 +118,7 @@ export const PostCaseScreen = ({ navigation }: any) => {
           <Card style={styles.card}>
             <Text style={styles.sectionTitle}>Marketplace Options</Text>
             <Input 
-              label="Estimated Budget (Optional - Rs.)" 
+              label="Estimated Budget (Optional - PKR)" 
               placeholder="e.g. 50000"
               keyboardType="numeric"
               value={budget}

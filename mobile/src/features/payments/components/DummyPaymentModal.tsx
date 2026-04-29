@@ -62,7 +62,7 @@ export const DummyPaymentModal: React.FC<DummyPaymentModalProps> = ({
             <Text style={styles.receiptLabel}>Item:</Text>
             <Text style={styles.receiptValue}>{productName}</Text>
             <Text style={styles.receiptLabel}>Total:</Text>
-            <Text style={styles.receiptPrice}>Rs. {amount}</Text>
+            <Text style={styles.receiptPrice}>PKR {amount}</Text>
           </View>
 
           <Text style={styles.warning}>
@@ -103,7 +103,7 @@ export const DummyPaymentModal: React.FC<DummyPaymentModalProps> = ({
               disabled={isProcessing}
             />
             <Button 
-              title={`Pay Rs. ${amount}`} 
+              title={`Pay PKR ${amount}`} 
               onPress={handlePay} 
               isLoading={isProcessing}
               style={{ flex: 1, marginLeft: 8, backgroundColor: '#000' }}

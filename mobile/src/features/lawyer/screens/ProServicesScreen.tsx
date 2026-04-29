@@ -39,7 +39,7 @@ export const ProServicesScreen = () => {
         </View>
         <Text style={styles.featureDesc}>Stand out instantly. Attain a verified elite badge, gain higher algorithmic placement in the marketplace, and build immediate trust with high-value clients.</Text>
         <View style={styles.pricingContainer}>
-          <Text style={styles.price}>Rs. 5,000</Text>
+          <Text style={styles.price}>PKR 5,000</Text>
           <Text style={styles.billingCycle}>/ month</Text>
         </View>
         <Button 
@@ -57,7 +57,7 @@ export const ProServicesScreen = () => {
         </View>
         <Text style={[styles.featureDesc, { color: '#666' }]}>Acquire active lead allocation credits. Each credit empowers you to pitch a precise, highly-competitive proposal to a newly opened client listing.</Text>
         <View style={styles.pricingContainer}>
-          <Text style={[styles.price, { color: Colors.primary }]}>Rs. 1,000</Text>
+          <Text style={[styles.price, { color: Colors.primary }]}>PKR 1,000</Text>
           <Text style={styles.billingCycle}>for 100 Credits</Text>
         </View>
         <Button 

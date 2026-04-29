@@ -123,3 +123,18 @@ export const getLawyerBiddedCaseIds = async (lawyerId: string): Promise<string[]
     return [];
   }
 };
+
+export const reportCase = async (caseId: string, reporterId: string, reason: string): Promise<void> => {
+  try {
+    await addDoc(collection(db, 'reports'), {
+      caseId,
+      reporterId,
+      reason,
+      createdAt: new Date().toISOString(),
+      status: 'pending'
+    });
+  } catch (error) {
+    console.error('Error reporting case:', error);
+    throw error;
+  }
+};

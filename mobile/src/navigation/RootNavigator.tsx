@@ -11,6 +11,7 @@ import { ClientNavigator } from './navigators/ClientNavigator';
 import { LawyerNavigator } from './navigators/LawyerNavigator';
 import { AdminDashboard } from '../features/admin/screens/AdminDashboard';
 import { ChatRoomScreen } from '../features/chat/screens/ChatRoomScreen';
+import { PublicProfileScreen } from '../features/shared/screens/PublicProfileScreen';
 import { onAuthStateChanged } from 'firebase/auth';
 import { auth } from '../services/firebaseConfig';
 import { getCurrentUserProfile } from '../features/auth/services/authService';
@@ -22,6 +23,7 @@ const AuthStack = createNativeStackNavigator();
 const ChatStack = () => (
   <Stack.Navigator>
     <Stack.Screen name="ChatRoom" component={ChatRoomScreen} />
+    <Stack.Screen name="PublicProfile" component={PublicProfileScreen} />
   </Stack.Navigator>
 );
 
