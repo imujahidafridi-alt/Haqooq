@@ -7,10 +7,13 @@ import { useAuthStore } from '../../../store/authStore';
 import { Colors } from '../../../utils/Colors';
 import { Typography } from '../../../utils/Typography';
 import { Button } from '../../../components/ui/Button';
+import { Avatar } from '../../../components/ui/Avatar';
 import { UserProfile, LawyerProfile } from '../../../types/models';
 import { signOut } from 'firebase/auth';
-import { auth } from '../../../services/firebaseConfig';
+import { auth, storage } from '../../../services/firebaseConfig';
+import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { Ionicons } from '@expo/vector-icons';
+import * as ImagePicker from 'expo-image-picker';
 
 export const ProfileScreen = () => {
   const { user, setUser } = useAuthStore();
@@ -65,6 +68,48 @@ export const ProfileScreen = () => {
     fetchProfile();
   }, [user?.id]);
 
+  const handleAvatarUpdate = async () => {
+    try {
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        allowsEditing: true,
+        aspect: [1, 1],
+        quality: 0.5,
+      });
+
+      if (!result.canceled && result.assets[0].uri) {
+        setSaving(true);
+        const { uri } = result.assets[0];
+        
+        // Fetch the image to convert it into a Blob
+        const response = await fetch(uri);
+        const blob = await response.blob();
+
+        // Upload to Firebase Storage
+        const storageRef = ref(storage, `avatars/${user!.id}_${Date.now()}`);
+        await uploadBytes(storageRef, blob);
+        
+        // Get public download URL
+        const downloadUrl = await getDownloadURL(storageRef);
+
+        // Update Firestore
+        const docRef = doc(db, 'users', user!.id);
+        await updateDoc(docRef, { photoURL: downloadUrl });
+
+        // Update UI locally
+        setProfile((prev) => prev ? { ...prev, photoURL: downloadUrl } : prev);
+        setUser({ ...user!, photoURL: downloadUrl } as typeof user);
+        
+        Alert.alert('Success', 'Avatar updated!');
+      }
+    } catch (e) {
+      console.error(e);
+      Alert.alert('Error', 'Unable to update avatar.');
+    } finally {
+      setSaving(false);
+    }
+  };
+
   const handleUpdate = async () => {
     if (!user || !profile) return;
     setSaving(true);
@@ -106,13 +151,6 @@ export const ProfileScreen = () => {
     }
   };
 
-  const getAvatarUrl = () => {
-     if (profile?.photoURL) return { uri: profile.photoURL };
-     // Unique random avatar mapping using the UI-Avatars API
-     const textName = displayName || profile?.email || 'User';
-     return { uri: `https://ui-avatars.com/api/?name=${encodeURIComponent(textName)}&background=1A365D&color=FFFFFF&size=200&rounded=true&bold=true` };
-  }
-
   const RenderSettingOption = ({ icon, title, onPress }: any) => (
       <TouchableOpacity style={styles.optionRow} onPress={onPress} activeOpacity={0.7}>
         <View style={styles.optionLeft}>
@@ -127,7 +165,12 @@ export const ProfileScreen = () => {
     <SafeAreaView style={styles.safeArea}>
       <ScrollView style={styles.container} contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
         <View style={styles.header}>
-          <Image source={getAvatarUrl()} style={styles.avatarImage} />
+          <TouchableOpacity onPress={handleAvatarUpdate} style={styles.avatarOverride} activeOpacity={0.8}>
+            <Avatar seed={profile?.id || 'default'} size={100} imageUrl={profile?.photoURL} />
+            <View style={styles.editAvatarBadge}>
+              <Ionicons name="camera" size={16} color="#FFF" />
+            </View>
+          </TouchableOpacity>
           
           <Text style={styles.emailText}>{profile?.email}</Text>
           <View style={[styles.badge, profile?.status === 'verified' ? styles.badgeVerified : styles.badgePending]}>
@@ -213,7 +256,22 @@ const styles = StyleSheet.create({
   container: { flex: 1 },
   content: { padding: 16, paddingBottom: 40 },
   header: { alignItems: 'center', marginBottom: 24, marginTop: 12 },
-  avatarImage: { width: 90, height: 90, borderRadius: 45, backgroundColor: Colors.border, marginBottom: 12 },
+  avatarOverride: { marginBottom: 12, position: 'relative' },
+  editAvatarBadge: {
+    position: 'absolute',
+    bottom: 0,
+    right: 0,
+    backgroundColor: Colors.primary,
+    padding: 6,
+    borderRadius: 20,
+    borderWidth: 2,
+    borderColor: '#FFF',
+    elevation: 3,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
+  },
   emailText: { fontSize: 16, color: Colors.textSecondary, marginBottom: 8, fontWeight: '500' },
   badge: { paddingHorizontal: 12, paddingVertical: 4, borderRadius: 16, marginTop: 4 },
   badgeVerified: { backgroundColor: '#DEF7EC' },

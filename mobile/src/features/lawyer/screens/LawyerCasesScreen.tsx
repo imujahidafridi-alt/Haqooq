@@ -9,6 +9,7 @@ import { Colors } from '../../../utils/Colors';
 import { Typography } from '../../../utils/Typography';
 import { Button } from '../../../components/ui/Button';
 import { SkeletonCard } from '../../../components/ui/SkeletonCard';
+import { Avatar } from '../../../components/ui/Avatar';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
 interface Props {
@@ -137,7 +138,10 @@ export const LawyerCasesScreen: React.FC<Props> = ({ navigation }) => {
       </View>
       <Text style={styles.categoryText}>{item.category}</Text>
 
+      <View style={{ flexDirection: 'row', alignItems: 'center', marginVertical: 8 }}>
+        <Avatar seed={item.clientId || 'default'} size={32} style={{ marginRight: 8 }} />
         <Text style={styles.clientName}>Client: {item.clientName || 'Anonymous Client'}</Text>
+      </View>
   
       <Text style={styles.sectionHeader}>Case Timeline</Text>
       {renderTimeline(item)}

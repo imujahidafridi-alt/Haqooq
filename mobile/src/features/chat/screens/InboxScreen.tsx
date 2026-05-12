@@ -7,6 +7,7 @@ import { useAuthStore } from '../../../store/authStore';
 import { Ionicons } from '@expo/vector-icons';
 import { ChatThread } from '../../../types/models';
 import { formatChatTimestamp } from '../../../utils/dateFormatter';
+import { Avatar } from '../../../components/ui/Avatar';
 
 const ChatListItem = ({ item, currentUser, navigation }: { item: ChatThread, currentUser: any, navigation: any }) => {
   let partnerId = item.participants?.find((p) => p !== currentUser?.id);
@@ -59,8 +60,12 @@ const ChatListItem = ({ item, currentUser, navigation }: { item: ChatThread, cur
         });
       }}
     >
-      <View style={[styles.avatar, isDirect ? styles.avatarDirect : styles.avatarCase, unread && styles.avatarUnread]}>
-        <Ionicons name={isDirect ? "person" : "briefcase"} size={24} color="#FFFFFF" />
+      <View style={{ marginRight: 16 }}>
+        <Avatar 
+           seed={isDirect && partnerProfile ? partnerProfile.id : item.caseId || item.id} 
+           size={52} 
+           imageUrl={isDirect && partnerProfile ? partnerProfile.photoURL : undefined} 
+        />
       </View>
       
       <View style={styles.chatContent}>

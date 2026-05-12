@@ -7,6 +7,7 @@ import { executeAlgoliaSearch, SearchFilters } from '../services/algoliaService'
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { LawyerProfile } from '../../../types/models';
 import { Button } from '../../../components/ui/Button';
+import { Avatar } from '../../../components/ui/Avatar';
 import { useQuery } from '@tanstack/react-query';
 
 // Define expected params, add real ones based on your navigator setup
@@ -59,7 +60,10 @@ export const SearchScreen: React.FC<Props> = ({ navigation }) => {
   const renderLawyer = ({ item }: { item: LawyerProfile }) => (
     <View style={styles.card}>
       <View style={styles.cardHeader}>
-        <Text style={styles.cardTitle}>{item.displayName}</Text>
+        <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+          <Avatar seed={item.id} size={40} imageUrl={item.photoURL} style={{ marginRight: 10 }} />
+          <Text style={styles.cardTitle}>{item.displayName}</Text>
+        </View>
         {item.isPremium && <View style={styles.premiumBadge}><Text style={styles.premiumText}>PRO</Text></View>}
       </View>
       <Text style={styles.cardSubtitle}>{item.city} • {item.experienceYears} Years Exp</Text>

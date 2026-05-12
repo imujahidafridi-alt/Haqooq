@@ -11,6 +11,7 @@ import { Button } from '../../../components/ui/Button';
 import { SkeletonCard } from '../../../components/ui/SkeletonCard';
 import { RateLawyerModal } from '../components/RateLawyerModal';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { Avatar } from '../../../components/ui/Avatar';
 
 interface Props {
   navigation: any;
@@ -98,6 +99,13 @@ export const ActiveCasesScreen: React.FC<Props> = ({ navigation }) => {
         </View>
       </View>
       <Text style={styles.categoryText}>{item.category}</Text>
+
+      {item.status === 'active' && item.assignedLawyerId && (
+        <View style={{ flexDirection: 'row', alignItems: 'center', marginVertical: 8 }}>
+          <Avatar seed={item.assignedLawyerId} size={32} style={{ marginRight: 8 }} />
+          <Text style={{ fontSize: 14, color: Colors.textSecondary, fontWeight: '500' }}>Assigned Lawyer Attached</Text>
+        </View>
+      )}
 
       <Text style={styles.sectionHeader}>Case Timeline</Text>
       {renderTimeline(item)}

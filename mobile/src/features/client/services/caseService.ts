@@ -31,13 +31,23 @@ export const classifyCaseWithAI = async (description: string): Promise<string> =
         'Content-Type': 'application/json'
       },
       body: JSON.stringify({
-        model: 'llama-3.1-8b-instant',
+        model: 'llama-3.3-70b-versatile',
+        response_format: { type: "json_object" },
         messages: [
-          { role: 'system', content: 'You are an expert legal AI classifier. Classify the following case description strictly into exactly one of these five categories: Property / Real Estate Law, Family Law, Corporate Law, Criminal Law, Civil Litigation. Respond ONLY with the category name and nothing else.' },
+          { 
+            role: 'system', 
+            content: `You are an expert legal AI classifier.
+Study the case description thoroughly before categorizing.
+You must return a valid JSON object with EXACTLY two keys:
+1) "analysis": A brief 1-sentence analysis of the case.
+2) "category": Must be STRICTLY ONE of these exact strings: "Property / Real Estate Law", "Family Law", "Corporate Law", "Criminal Law", "Civil Litigation". 
+
+Note: Landlord/tenant disputes, rent issues, and evictions fall under "Property / Real Estate Law".` 
+          },
           { role: 'user', content: description }
         ],
         temperature: 0.1,
-        max_tokens: 10
+        max_tokens: 150
       })
     });
 
@@ -48,8 +58,18 @@ export const classifyCaseWithAI = async (description: string): Promise<string> =
     }
 
     const result = await response.json();
-    let category = result.choices?.[0]?.message?.content?.trim().replace(/["']/g, "") || 'Civil Litigation';
+    let aiOutput = { category: 'Civil Litigation', analysis: '' };
+    try {
+      aiOutput = JSON.parse(result.choices[0].message.content);
+    } catch (e) {
+      console.warn("Failed to parse LLM JSON:", result.choices[0].message.content);
+    }
     
+    // Log the AI's study/analysis to the console for debugging
+    console.log("AI Case Study Analysis:", aiOutput.analysis);
+
+    let category = aiOutput.category;
+
     const validCategories = ['Property / Real Estate Law', 'Family Law', 'Corporate Law', 'Criminal Law', 'Civil Litigation'];
     return validCategories.includes(category) ? category : 'Civil Litigation';
     
