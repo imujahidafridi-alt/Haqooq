@@ -6,7 +6,8 @@ import { Button } from '../../../components/ui/Button';
 import { Input } from '../../../components/ui/Input';
 import { Avatar } from '../../../components/ui/Avatar';
 import { formatCurrency } from '../../../utils/currencyFormatter';
-import { getOpenCases, submitProposal, getLawyerBiddedCaseIds, reportCase } from '../services/marketplaceService';
+import { getOpenCases, submitProposal, getLawyerBiddedCaseIds } from '../services/marketplaceService';
+import { ReportModal } from '../../shared/components/ReportModal';
 import { LegalCase } from '../../../types/models';
 import { useAuthStore } from '../../../store/authStore';
 import { Colors } from '../../../utils/Colors';
@@ -26,7 +27,6 @@ export const FeedScreen = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const [isReportModalVisible, setReportModalVisible] = useState(false);
-  const [reportReason, setReportReason] = useState('');
   const [caseToReport, setCaseToReport] = useState<LegalCase | null>(null);
 
   const fetchCases = async () => {
@@ -69,27 +69,6 @@ export const FeedScreen = () => {
       setBiddedCaseIds(prev => new Set(prev).add(selectedCase!.id));
     } catch (error: any) {
       Alert.alert('Error', error.message);
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
-
-  const handleReportCase = async () => {
-    if (!reportReason.trim()) {
-      Alert.alert('Error', 'Please provide a reason for reporting.');
-      return;
-    }
-    if (!caseToReport || !user) return;
-    
-    setIsSubmitting(true);
-    try {
-      await reportCase(caseToReport.id, user.id, reportReason);
-      Alert.alert('Success', 'Case reported. Our team will review it.');
-      setReportModalVisible(false);
-      setCaseToReport(null);
-      setReportReason('');
-    } catch (e: any) {
-      Alert.alert('Error', e.message);
     } finally {
       setIsSubmitting(false);
     }
@@ -209,31 +188,17 @@ export const FeedScreen = () => {
       </Modal>
 
       {/* Report Modal */}
-      <Modal visible={isReportModalVisible} animationType="slide" transparent>
-        <KeyboardAvoidingView 
-          style={styles.modalOverlay}
-          behavior={Platform.OS === 'ios' ? 'padding' : 'padding'}
-        >
-          <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
-            <View style={{ flex: 1 }} />
-          </TouchableWithoutFeedback>
-
-          <View style={styles.modalContent}>
-            <Text style={styles.modalTitle}>Report Case</Text>
-            <Text style={styles.modalSub}>Why are you reporting this?</Text>
-            <Input
-              label="Reason for reporting"
-              placeholder="Spam, inappropriate, etc..."
-              value={reportReason}
-              onChangeText={setReportReason}
-            />
-            <View style={styles.modalActions}>
-              <Button title="Cancel" variant="outline" onPress={() => { setReportModalVisible(false); setReportReason(''); setCaseToReport(null); }} style={{ flex: 1, marginRight: 8 }} />
-              <Button title="Submit Report" variant="primary" onPress={handleReportCase} isLoading={isSubmitting} style={{ flex: 1, marginLeft: 8, backgroundColor: Colors.error, borderColor: Colors.error }} />
-            </View>
-          </View>
-        </KeyboardAvoidingView>
-      </Modal>
+      {caseToReport && user && (
+        <ReportModal
+          visible={isReportModalVisible}
+          entityId={caseToReport.id}
+          entityType="case"
+          reporterId={user.id}
+          entityTitle={caseToReport.title}
+          onClose={() => { setReportModalVisible(false); setCaseToReport(null); }}
+          onSuccess={() => { setReportModalVisible(false); setCaseToReport(null); }}
+        />
+      )}
     </View>
   );
 };

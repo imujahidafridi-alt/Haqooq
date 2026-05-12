@@ -76,3 +76,17 @@ export interface Review {
   reviewText?: string;
   createdAt: number;
 }
+
+export type ReportEntityType = 'case' | 'user' | 'review' | 'message';
+export type ReportCategory = 'scam' | 'spam' | 'harassment' | 'inappropriate' | 'other';
+
+export interface Report {
+  id: string;
+  reporterId: string;
+  entityId: string;
+  entityType: ReportEntityType;
+  category: ReportCategory;
+  reason: string;
+  status: 'pending' | 'reviewed' | 'resolved';
+  createdAt: number;
+}
