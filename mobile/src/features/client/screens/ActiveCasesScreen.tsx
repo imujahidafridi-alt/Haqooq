@@ -41,10 +41,8 @@ export const ActiveCasesScreen: React.FC<Props> = ({ navigation }) => {
       caseData.sort((a, b) => b.createdAt - a.createdAt);
       setCases(caseData);
       
-      // Stop the skeleton loader if we have ANY data, or if the server confirms it is completely empty
-      if (caseData.length > 0 || !snapshot.metadata.fromCache) {
-        setLoading(false);
-      }
+      // Stop the skeleton loader immediately so the UI doesn't hang waiting for server cache invalidation
+      setLoading(false);
     });
 
     return () => unsubscribe();

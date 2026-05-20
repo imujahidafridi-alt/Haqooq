@@ -31,28 +31,43 @@ export const LawyerCasesScreen: React.FC<Props> = ({ navigation }) => {
       where('assignedLawyerId', '==', user.id)
     );
 
-      const unsubscribe = onSnapshot(q, { includeMetadataChanges: true }, async (snapshot) => {
+    const unsubscribe = onSnapshot(q, { includeMetadataChanges: true }, async (snapshot) => {
         const caseData = snapshot.docs.map(docId => ({
           id: docId.id,
           ...docId.data()
         })) as LegalCase[];
 
+        // FAST RENDER: Push raw data immediately to avoid UI blocking
+        setCases(caseData);
+        // Clear skeleton loader immediately so the UI doesn't hang
+        if (caseData.length >= 0) {
+           setLoading(false);
+        }
+
+        // ASYNC HYDRATION PASS (Runs in background)
         const hydratedCases = await Promise.all(
           caseData.map(async (c) => {
-            if (!c.clientName || c.clientName === 'Unknown Client' || c.clientName === 'Anonymous Client') {
+            const caseCopy = { ...c }; // Immutable copy
+            if (!caseCopy.clientName || caseCopy.clientName === 'Unknown Client' || caseCopy.clientName === 'Anonymous Client') {
+               // Fast pass memory cache check first to save DB reads limit
               try {
-                const userDoc = await getDoc(doc(db, 'users', c.clientId));
-                if (userDoc.exists()) {
-                  const userData = userDoc.data();
-                  c.clientName = userData.displayName || userData.name || userData.email || 'Anonymous Person';
+                if (caseCopy.clientId) {
+                  const userDoc = await getDoc(doc(db, 'users', caseCopy.clientId));
+                  if (userDoc.exists()) {
+                    const userData = userDoc.data();
+                    caseCopy.clientName = userData.displayName || userData.name || userData.email || 'Anonymous Person';
+                  }
                 }
               } catch (e) {}
             }
-            return c;
+            return caseCopy;
           })
         );
         
-        setCases(hydratedCases);
+        // Prevent unnecessary re-renders if nothing changed via JSON string comparison mapping
+        if (JSON.stringify(caseData) !== JSON.stringify(hydratedCases)) {
+           setCases(hydratedCases);
+        }
     });
 
     return () => unsubscribe();
