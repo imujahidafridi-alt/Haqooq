@@ -1,24 +1,21 @@
 import React, { useState } from 'react';
 import { View, StyleSheet, Text, ScrollView, Platform } from 'react-native';
-import { Card } from '../../../components/ui/Card';
 import { Button } from '../../../components/ui/Button';
-import { DummyPaymentModal } from '../../payments/components/DummyPaymentModal';
-import { TransactionType } from '../../payments/services/paymentService';
+import { EasypaisaCheckoutModal } from '../../payments/components/EasypaisaCheckoutModal';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '../../../utils/Colors';
 
 export const ProServicesScreen = () => {
   const [modalVisible, setModalVisible] = useState(false);
   
-  // Payment Intent State
-  const [purchaseType, setPurchaseType] = useState<TransactionType>('premium_profile');
-  const [purchaseAmount, setPurchaseAmount] = useState(0);
-  const [purchaseName, setPurchaseName] = useState('');
+  const [planName, setPlanName] = useState('');
+  const [credits, setCredits] = useState(0);
+  const [amount, setAmount] = useState(0);
 
-  const initiateCheckout = (name: string, amount: number, type: TransactionType) => {
-    setPurchaseName(name);
-    setPurchaseAmount(amount);
-    setPurchaseType(type);
+  const initiateCheckout = (name: string, assignedCredits: number, requiredAmount: number) => {
+    setPlanName(name);
+    setCredits(assignedCredits);
+    setAmount(requiredAmount);
     setModalVisible(true);
   };
 
@@ -29,22 +26,39 @@ export const ProServicesScreen = () => {
           <Ionicons name="star" size={24} color={Colors.primary} style={styles.headerIcon} />
           <Text style={styles.header}>Lawyer Pro Tools</Text>
         </View>
-        <Text style={styles.subtext}>Elevate your legal practice with enterprise-grade premium features.</Text>
+        <Text style={styles.subtext}>Acquire bidding credits manually through Easypaisa to pitch to high-value clients.</Text>
+      </View>
+
+      <View style={styles.cardWrapper}>
+        <View style={styles.cardHeader}>
+          <Ionicons name="briefcase" size={24} color={Colors.primary} />
+          <Text style={[styles.featureTitle, { color: Colors.primary }]}>Starter Pack</Text>
+        </View>
+        <Text style={[styles.featureDesc, { color: '#666' }]}>Get a quick start. Essential manual credits for applying to new job cases.</Text>
+        <View style={styles.pricingContainer}>
+          <Text style={[styles.price, { color: Colors.primary }]}>PKR 250</Text>
+          <Text style={styles.billingCycle}>for 10 Credits</Text>
+        </View>
+        <Button 
+          title="Buy Starter Pack" 
+          onPress={() => initiateCheckout('Starter Pack (10 Credits)', 10, 250)} 
+          style={styles.standardActionBtn}
+        />
       </View>
 
       <View style={[styles.cardWrapper, styles.premiumBadge]}>
         <View style={styles.cardHeader}>
           <Ionicons name="shield-checkmark" size={24} color="#D4AF37" />
-          <Text style={styles.featureTitle}>Premium Verified Profile</Text>
+          <Text style={styles.featureTitle}>Professional Pack</Text>
         </View>
-        <Text style={styles.featureDesc}>Stand out instantly. Attain a verified elite badge, gain higher algorithmic placement in the marketplace, and build immediate trust with high-value clients.</Text>
+        <Text style={styles.featureDesc}>Recommended for full-time professionals. Substantial savings on credit acquisitions.</Text>
         <View style={styles.pricingContainer}>
-          <Text style={styles.price}>PKR 5,000</Text>
-          <Text style={styles.billingCycle}>/ month</Text>
+          <Text style={styles.price}>PKR 1,000</Text>
+          <Text style={styles.billingCycle}>for 50 Credits</Text>
         </View>
         <Button 
-          title="Upgrade Profile to Premium" 
-          onPress={() => initiateCheckout('Enterprise Premium Profile Subscription', 5000, 'premium_profile')} 
+          title="Buy Professional Pack" 
+          onPress={() => initiateCheckout('Professional Pack (50 Credits)', 50, 1000)} 
           style={styles.premiumActionBtn}
           textStyle={styles.premiumBtnText}
         />
@@ -52,27 +66,27 @@ export const ProServicesScreen = () => {
 
       <View style={styles.cardWrapper}>
         <View style={styles.cardHeader}>
-          <Ionicons name="briefcase" size={24} color={Colors.primary} />
-          <Text style={[styles.featureTitle, { color: Colors.primary }]}>Procure Bidding Credits</Text>
+          <Ionicons name="flash" size={24} color={Colors.primary} />
+          <Text style={[styles.featureTitle, { color: Colors.primary }]}>Elite Pack</Text>
         </View>
-        <Text style={[styles.featureDesc, { color: '#666' }]}>Acquire active lead allocation credits. Each credit empowers you to pitch a precise, highly-competitive proposal to a newly opened client listing.</Text>
+        <Text style={[styles.featureDesc, { color: '#666' }]}>Massive value for law firm owners bidding on enterprise clients actively.</Text>
         <View style={styles.pricingContainer}>
-          <Text style={[styles.price, { color: Colors.primary }]}>PKR 1,000</Text>
+          <Text style={[styles.price, { color: Colors.primary }]}>PKR 1,800</Text>
           <Text style={styles.billingCycle}>for 100 Credits</Text>
         </View>
         <Button 
-          title="Purchase Credits Package" 
-          onPress={() => initiateCheckout('100x Enterprise Bidding Credits', 1000, 'bidding_credits')} 
+          title="Buy Elite Pack" 
+          onPress={() => initiateCheckout('Elite Pack (100 Credits)', 100, 1800)} 
           style={styles.standardActionBtn}
         />
       </View>
 
-      <DummyPaymentModal 
+      <EasypaisaCheckoutModal 
         isVisible={modalVisible}
         onClose={() => setModalVisible(false)}
-        productName={purchaseName}
-        amount={purchaseAmount}
-        type={purchaseType}
+        planName={planName}
+        credits={credits}
+        amount={amount}
       />
     </ScrollView>
   );

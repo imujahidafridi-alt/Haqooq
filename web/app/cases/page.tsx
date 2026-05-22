@@ -6,6 +6,7 @@ import { PageShell } from '@/components/layout/PageShell';
 import { apiFetch } from '@/lib/api';
 import { DataTable } from '@/components/ui/DataTable';
 import { Badge } from '@/components/ui/Badge';
+import { formatCurrency } from '@/utils/format';
 import { LegalCase } from '@/types';
 
 const columns = [
@@ -58,7 +59,7 @@ export default function CasesPage() {
               data={filteredCases.map((item) => ({
                 ...item,
                 status: <Badge label={item.status} variant={item.status === 'open' ? 'info' : item.status === 'active' ? 'success' : 'default'} />,
-                budget: item.budget ? `$${item.budget}` : '—'
+                budget: item.budget ? formatCurrency(item.budget) : '—'
               }))}
             />
           )}

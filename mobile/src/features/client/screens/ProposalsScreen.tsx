@@ -66,7 +66,7 @@ export const ProposalsScreen: React.FC<Props> = ({ route, navigation }) => {
       <Text style={styles.specialization}>{item.lawyer?.specialization?.join(', ') || 'General'}</Text>
       
       <View style={styles.bidDetails}>
-        <Text style={styles.bidAmount}>Bid: ${item.proposal.bidAmount}</Text>
+        <Text style={styles.bidAmount}>Bid: PKR {item.proposal.bidAmount}</Text>
         <Text style={styles.rating}>⭐ {item.lawyer?.rating?.toFixed(1) || 'New'}</Text>
       </View>
       

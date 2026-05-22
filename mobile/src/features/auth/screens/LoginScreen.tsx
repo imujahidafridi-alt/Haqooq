@@ -103,6 +103,7 @@ export const LoginScreen = ({ navigation }: any) => {
               <View style={[styles.inputContainer, isLoading && styles.inputDisabled]}>
                 <Ionicons name="mail-outline" size={20} color="#64748B" style={styles.inputIcon} />
                 <TextInput
+                  testID="emailInput"
                   style={styles.input}
                   placeholder="Email Address"
                   placeholderTextColor="#94A3B8"
@@ -118,6 +119,7 @@ export const LoginScreen = ({ navigation }: any) => {
               <View style={[styles.inputContainer, isLoading && styles.inputDisabled]}>
                 <Ionicons name="lock-closed-outline" size={20} color="#64748B" style={styles.inputIcon} />
                 <TextInput
+                  testID="passwordInput"
                   style={styles.input}
                   placeholder="Password"
                   placeholderTextColor="#94A3B8"
@@ -140,6 +142,7 @@ export const LoginScreen = ({ navigation }: any) => {
               </TouchableOpacity>
 
               <TouchableOpacity 
+                testID="loginButton"
                 style={[styles.primaryBtn, isLoading && styles.primaryBtnDisabled]} 
                 onPress={handleLogin}
                 disabled={isLoading}

@@ -8,6 +8,8 @@ const navItems = [
   { label: 'Dashboard', href: '/dashboard', icon: Home },
   { label: 'Users', href: '/users', icon: Users },
   { label: 'Cases', href: '/cases', icon: FileSearch },
+  { label: 'Surveillance', href: '/surveillance', icon: ShieldCheck },
+  { label: 'Credits', href: '/credits', icon: Sparkles },
   { label: 'Reports', href: '/reports', icon: ShieldCheck },
   { label: 'Finance', href: '/finance', icon: BarChart3 },
   { label: 'Notifications', href: '/notifications', icon: Bell },

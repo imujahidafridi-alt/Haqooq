@@ -1,7 +1,7 @@
 export const formatCurrency = (value: number) =>
-  new Intl.NumberFormat('en-US', {
+  new Intl.NumberFormat('en-PK', {
     style: 'currency',
-    currency: 'USD',
+    currency: 'PKR',
     maximumFractionDigits: 0
   }).format(value);
 

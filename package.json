@@ -1,0 +1,8 @@
+{
+  "devDependencies": {
+    "@heroicons/react": "^2.2.0",
+    "clsx": "^2.1.1",
+    "date-fns": "^4.2.1",
+    "tailwind-merge": "^3.6.0"
+  }
+}
