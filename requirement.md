@@ -47,3 +47,56 @@ To future-proof the application, all financial transactions will be routed throu
 * **Security:** Firestore Security Rules must strictly isolate user data so clients can only read their own case details and chat logs.
 * **Cross-Platform UI:** Built with React Native to ensure a consistent look, feel, and performance across iOS and Android.
 * [cite_start]**Scalable Searching:** Implementation of third-party indexing synced with Firestore to efficiently handle the "Rank on keywords" feature[cite: 80].
+
+## 6. Admin Panel (New)
+The Admin Panel is a web-based application (Next.js) for platform administrators to manage users, transactions, and to perform oversight.
+
+- **Authentication & Roles:** Admins authenticate via Firebase Authentication and are authorized using server-side checks (firebase-admin). Admin role documents are stored in the `users` collection with `role: "admin"`.
+- **Key Capabilities:**
+    - User management: search, view, edit (suspend/activate) users and lawyers.
+    - Surveillance: view chat threads and messages across the platform for moderation and dispute resolution.
+    - Credit purchase approvals: review submitted payment proofs (Easypaisa receipts), approve/reject requests, and trigger server-side credit assignment.
+    - Transaction and audit logs: view all transactions, credit assignments, admin actions, and export logs for compliance.
+    - Notifications: send platform notifications to individual users or broadcast messages.
+
+## 7. Credits, Payments & Easypaisa (Latest Feature)
+This release adds a credits-based purchase system and a manual Easypaisa integration suitable for regions where direct gateway integration is not yet available.
+
+- **Client Flow (Mobile - Lawyer):**
+    - Lawyer selects a credit package in the app (`ProServicesScreen`).
+    - Lawyer submits Easypaisa payment by uploading a receipt screenshot via the `EasypaisaCheckoutModal`.
+    - A `credit_purchases` document is created in Firestore with status `pending` and the uploaded receipt stored in Firebase Storage.
+
+- **Admin Flow (Web - Admin Panel):**
+    - Admin reviews pending `credit_purchases` in the Admin Panel `Credits` page.
+    - On approval, an authenticated server-side API (using `firebase-admin`) increments the user's `credits` field atomically, creates a `transactions` ledger entry, and sets the purchase `status` to `approved`.
+    - The admin may reject a purchase, providing a reason; the document is updated with `status: rejected` and a notification is sent to the user.
+
+- **Technical Notes:**
+    - All credit assignment and transaction ledger updates are performed by secure server-side code (Next.js API routes calling `firebase-admin` or Cloud Functions). Client-side trust is avoided for monetary operations.
+    - The `PaymentService` abstraction remains for future gateway integrations; current Easypaisa flow is manual proof-based.
+
+## 8. Surveillance, Moderation & Notifications
+- **Surveillance UI:** Admins can open a chat thread and read messages in read-only mode for monitoring or investigations. API endpoints exist to fetch chat lists and chat messages using admin credentials.
+- **Moderation Actions:** Admins can flag messages, create evidence entries, and initiate account reviews.
+- **Notifications:** The platform supports system notifications delivered via Firebase Cloud Messaging. Admin-triggered notifications create documents in `notifications` and may be pushed to devices.
+
+## 9. Deployment, Environment & Security
+- **Environment sync:** The web `.env.local` holds `NEXT_PUBLIC_FIREBASE_*` keys and a `FIREBASE_SERVICE_ACCOUNT` (JSON) used by server-side admin APIs. Service account JSON should not be committed to the repository in production — store securely in the host (Vercel, Netlify, or CI) environment variables.
+- **Server-side checks:** All admin-only APIs validate the caller's admin status using `firebase-admin` and Firestore user role fields.
+- **Firestore Rules:** Continue to enforce that client-side code cannot increment `credits` or write `transactions` directly. Any write that affects user balance must be performed by a server-side admin API or Cloud Function.
+- **Audit Logging:** All admin approvals, rejections, and credit assignments must create an immutable `audit_logs` entry with timestamp, admin uid, action, and affected document id.
+
+## 10. Test Cases & Validation (Updated)
+- E2E test for credits purchase flow:
+    1. Lawyer uploads receipt and creates `credit_purchases` with `pending` status.
+    2. Admin approves via Admin Panel API; user's `credits` incremented; `transactions` and `audit_logs` entries created; notification generated.
+    3. Rejection path: Admin rejects; `credit_purchases.status` becomes `rejected` with an admin reason; notification generated.
+
+## 11. Miscellaneous Updates
+- **Currency:** All UI currency displays are standardized to PKR across web and mobile (Intl.NumberFormat('en-PK', { currency: 'PKR' })).
+- **Created Admin Account (dev):** An initial admin user `admin@haqooq.com` was created for testing and platform bootstrapping — remove or rotate credentials before production deployment.
+- **APIs added:** `/api/chats`, `/api/chats/[chatId]`, `/api/credit_requests` (admin), and other administration endpoints implemented server-side.
+
+---
+_Document last updated: May 22, 2026 — includes admin panel, surveillance, credits & Easypaisa manual flow, notifications, and deployment/security guidance._
