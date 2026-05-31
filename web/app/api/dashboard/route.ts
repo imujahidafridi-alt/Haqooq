@@ -50,7 +50,7 @@ export const GET = async (request: Request) => {
       const data = doc.data();
       return { 
         name: data.displayName || data.email || 'Unknown', 
-        value: data.casesResolved || Math.floor(Math.random() * 24) + 1 
+        value: data.casesResolved || 0 
       };
     })
   };

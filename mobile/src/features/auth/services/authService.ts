@@ -133,7 +133,7 @@ export const registerUser = async (
     newUserProfile.experienceYears = 0; // default
     newUserProfile.rating = 0;
     newUserProfile.isPremium = false;
-    newUserProfile.biddingCredits = 100;
+    newUserProfile.credits = 10;
   }
 
   try {

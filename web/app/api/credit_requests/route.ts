@@ -72,6 +72,15 @@ export const POST = async (request: Request) => {
       createdAt: new Date().toISOString()
     });
 
+    // Create Audit Log
+    await db.collection('audit_logs').add({
+      adminId: auth.uid,
+      action: 'APPROVE_CREDIT',
+      targetId: requestId,
+      details: `Approved ${creditsToAdd} credits for lawyer ${lawyerId}`,
+      timestamp: new Date().toISOString()
+    });
+
     return NextResponse.json({ success: true });
   } else if (action === 'reject') {
     await docRef.update({ status: 'rejected', processedAt: new Date().toISOString() });
@@ -82,6 +91,15 @@ export const POST = async (request: Request) => {
       message: `Your recent credit purchase request was rejected. Please contact support.`,
       read: false,
       createdAt: new Date().toISOString()
+    });
+
+    // Create Audit Log
+    await db.collection('audit_logs').add({
+      adminId: auth.uid,
+      action: 'REJECT_CREDIT',
+      targetId: requestId,
+      details: `Rejected credit purchase for lawyer ${data.lawyerId}`,
+      timestamp: new Date().toISOString()
     });
 
     return NextResponse.json({ success: true });

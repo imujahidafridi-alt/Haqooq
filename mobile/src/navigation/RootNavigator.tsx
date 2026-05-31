@@ -13,9 +13,11 @@ import { AdminDashboard } from '../features/admin/screens/AdminDashboard';
 import { ChatRoomScreen } from '../features/chat/screens/ChatRoomScreen';
 import { PublicProfileScreen } from '../features/shared/screens/PublicProfileScreen';
 import { onAuthStateChanged } from 'firebase/auth';
-import { auth } from '../services/firebaseConfig';
+import { doc, onSnapshot } from 'firebase/firestore';
+import { auth, db } from '../services/firebaseConfig';
 import { getCurrentUserProfile } from '../features/auth/services/authService';
 import { registerForPushNotificationsAsync } from '../services/notificationService';
+import { UserProfile } from '../types/models';
 
 const Stack = createNativeStackNavigator();
 const AuthStack = createNativeStackNavigator();
@@ -84,6 +86,29 @@ export const RootNavigator = () => {
       clearTimeout(splashTimer);
     };
   }, []);
+
+  // Real-time listener for user profile (credits, status, etc.)
+  useEffect(() => {
+    if (!user?.id) return;
+    
+    const unsubscribeProfile = onSnapshot(doc(db, 'users', user.id), (docSnap) => {
+      if (docSnap.exists()) {
+        const newData = docSnap.data() as UserProfile;
+        newData.id = docSnap.id;
+        
+        // Prevent infinite loops by checking deeply or just update store
+        // Zustand will handle reference equality for us mostly, but let's be safe
+        const currentUserStr = JSON.stringify(useAuthStore.getState().user);
+        const newUserStr = JSON.stringify(newData);
+        
+        if (currentUserStr !== newUserStr) {
+          setUser(newData);
+        }
+      }
+    });
+
+    return () => unsubscribeProfile();
+  }, [user?.id]);
 
   if (isLoading || !isSplashMinTimeDone) {
     return <SplashScreen />;

@@ -16,7 +16,7 @@ export const lawyerProfileSchema = z.object({
   city: z.string(),
   rating: z.number().optional(),
   isPremium: z.boolean().default(false),
-  biddingCredits: z.number().default(0),
+  credits: z.number().default(0),
 });
 
 export const searchFiltersSchema = z.object({

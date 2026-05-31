@@ -1,11 +1,13 @@
 import React, { useState } from 'react';
 import { View, StyleSheet, Text, ScrollView, Platform } from 'react-native';
 import { Button } from '../../../components/ui/Button';
+import { useAuthStore } from '../../../store/authStore';
 import { EasypaisaCheckoutModal } from '../../payments/components/EasypaisaCheckoutModal';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '../../../utils/Colors';
 
 export const ProServicesScreen = () => {
+  const { user } = useAuthStore();
   const [modalVisible, setModalVisible] = useState(false);
   
   const [planName, setPlanName] = useState('');
@@ -27,6 +29,9 @@ export const ProServicesScreen = () => {
           <Text style={styles.header}>Lawyer Pro Tools</Text>
         </View>
         <Text style={styles.subtext}>Acquire bidding credits manually through Easypaisa to pitch to high-value clients.</Text>
+        <View style={styles.balanceBadge}>
+          <Text style={styles.balanceText}>Current Balance: {user?.credits || 0} Credits</Text>
+        </View>
       </View>
 
       <View style={styles.cardWrapper}>
@@ -126,6 +131,21 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     lineHeight: 20,
     paddingHorizontal: 8,
+  },
+  balanceBadge: {
+    marginTop: 12,
+    backgroundColor: '#eff6ff',
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+    borderRadius: 20,
+    alignSelf: 'center',
+    borderWidth: 1,
+    borderColor: '#bfdbfe',
+  },
+  balanceText: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#1d4ed8',
   },
   cardWrapper: {
     backgroundColor: '#FFFFFF',

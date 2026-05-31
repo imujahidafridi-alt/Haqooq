@@ -1,4 +1,4 @@
-import { collection, query, where, getDocs, addDoc, orderBy, getDoc, doc } from 'firebase/firestore';
+import { collection, query, where, getDocs, addDoc, orderBy, getDoc, doc, runTransaction } from 'firebase/firestore';
 import { db } from '../../../services/firebaseConfig';
 import { LegalCase, CaseProposal } from '../../../types/models';
 
@@ -79,28 +79,62 @@ export const submitProposal = async (
   message: string
 ): Promise<string> => {
   try {
-    // 1. Prevent duplicate bids on the same case
-    const duplicateQuery = query(
-      collection(db, 'proposals'),
-      where('caseId', '==', caseId),
-      where('lawyerId', '==', lawyerId)
-    );
-    const duplicateBids = await getDocs(duplicateQuery);
-    if (!duplicateBids.empty) {
-      throw new Error('You have already submitted a proposal for this case.');
-    }
+    const docRefId = await runTransaction(db, async (transaction) => {
+      // 1. Check user credits first
+      const lawyerRef = doc(db, 'users', lawyerId);
+      const lawyerSnap = await transaction.get(lawyerRef);
+      if (!lawyerSnap.exists()) {
+        throw new Error('User not found.');
+      }
+      
+      const credits = lawyerSnap.data().credits || 0;
+      if (credits < 1) {
+        throw new Error('Insufficient credits. Please purchase more credits from Pro Tools to submit a proposal.');
+      }
 
-    const proposalData: Omit<CaseProposal, 'id'> = {
-      caseId,
-      lawyerId,
-      bidAmount,
-      message,
-      status: 'pending',
-      createdAt: Date.now(),
-    };
+      // 2. Prevent duplicate bids on the same case
+      const duplicateQuery = query(
+        collection(db, 'proposals'),
+        where('caseId', '==', caseId),
+        where('lawyerId', '==', lawyerId)
+      );
+      // Transactions in firestore: reads must come before writes, query gets are allowed
+      const duplicateBids = await getDocs(duplicateQuery);
+      if (!duplicateBids.empty) {
+        throw new Error('You have already submitted a proposal for this case.');
+      }
 
-    const docRef = await addDoc(collection(db, 'proposals'), proposalData);
-    return docRef.id;
+      // 3. Deduct credit
+      transaction.update(lawyerRef, { credits: credits - 1 });
+
+      // Cannot addDoc immediately from transaction easily, wait we can just generate a ref and set it.
+      const newProposalRef = doc(collection(db, 'proposals'));
+      const proposalData: Omit<CaseProposal, 'id'> = {
+        caseId,
+        lawyerId,
+        bidAmount,
+        message,
+        status: 'pending',
+        createdAt: Date.now(),
+      };
+      
+      transaction.set(newProposalRef, proposalData);
+
+      // Log credit deduction transaction
+      const sysTransRef = doc(collection(db, 'transactions'));
+      transaction.set(sysTransRef, {
+        userId: lawyerId,
+        amount: 0,
+        type: 'bid_submission',
+        creditsDeducted: 1,
+        status: 'completed',
+        timestamp: new Date().toISOString()
+      });
+
+      return newProposalRef.id;
+    });
+
+    return docRefId;
   } catch (error: any) {
     console.error("Error submitting proposal:", error);
     throw new Error(error.message || 'Unable to submit your proposal. Please try again.');

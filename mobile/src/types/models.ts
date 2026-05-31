@@ -23,7 +23,7 @@ export interface LawyerProfile extends UserProfile {
   rating?: number;
   ratingCount?: number;
   isPremium: boolean;
-  biddingCredits: number;
+  credits: number;
 }
 
 export interface LegalCase {

@@ -24,7 +24,7 @@ interface DashboardSummary {
 export default function DashboardPage() {
   const { data, isLoading } = useQuery<DashboardSummary>({
     queryKey: ['dashboard-summary'],
-    queryFn: async () => apiFetch('/api/dashboard/summary')
+    queryFn: async () => apiFetch('/api/dashboard')
   });
 
   return (
