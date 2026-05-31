@@ -6,9 +6,14 @@ interface DataTableProps<T> {
 }
 
 export const DataTable = <T,>({ columns, data }: DataTableProps<T>) => {
+  const enhancedColumns = columns.map(col => ({
+    cell: (info: any) => info.getValue(),
+    ...col,
+  }));
+
   const table = useReactTable({
     data,
-    columns,
+    columns: enhancedColumns,
     getCoreRowModel: getCoreRowModel()
   });
 
