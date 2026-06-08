@@ -5,7 +5,7 @@ import { getFirestore } from 'firebase-admin/firestore';
 let adminApp: App | null = null;
 
 const initializeAdminApp = () => {
-  const serviceAccountJson = process.env.FIREBASE_SERVICE_ACCOUNT;
+  const serviceAccountJson = process.env.FIREBASE_SERVICE_ACCOUNT?.trim();
   if (!serviceAccountJson) {
     throw new Error('Missing FIREBASE_SERVICE_ACCOUNT environment variable for admin access.');
   }
