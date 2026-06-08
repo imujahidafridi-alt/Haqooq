@@ -25,8 +25,10 @@ service cloud.firestore {
 
     match /users/{userId} {
       allow read: if isOwner(userId) || isAdmin() || (resource != null && resource.data.role == 'lawyer' && resource.data.status == 'verified');
-      allow create: if isOwner(userId);
-      allow update: if isOwner(userId) && (!request.resource.data.diff(resource.data).affectedKeys().hasAny(['isPremium', 'biddingCredits', 'status'])) || isAdmin();
+      allow create: if isOwner(userId) && request.resource.data.role != 'admin' && 
+                       (!request.resource.data.keys().hasAny(['isPremium', 'biddingCredits']) || request.resource.data.isPremium == false) &&
+                       (!request.resource.data.keys().hasAny(['credits']) || request.resource.data.credits <= 10);
+      allow update: if isOwner(userId) && (!request.resource.data.diff(resource.data).affectedKeys().hasAny(['isPremium', 'biddingCredits', 'status', 'role', 'credits'])) || isAdmin();
     }
 
     match /cases/{caseId} {
@@ -45,12 +47,11 @@ service cloud.firestore {
     }
 
     match /chats/{chatId} {
-      // Simplified for MVP to avoid array evaluation permission errors
-      allow read, update: if isAuthenticated();
-      allow create: if isAuthenticated();
+      allow read, update: if isAuthenticated() && (resource.data.participants.hasAny([request.auth.uid]) || isAdmin());
+      allow create: if isAuthenticated() && request.resource.data.participants.hasAny([request.auth.uid]);
       
       match /messages/{messageId} {
-        allow read, write: if isAuthenticated(); // Simplified for MVP chat access
+        allow read, write: if isAuthenticated() && (get(/databases/$(database)/documents/chats/$(chatId)).data.participants.hasAny([request.auth.uid]) || isAdmin());
       }
     }
 
@@ -61,13 +62,22 @@ service cloud.firestore {
 
     match /audit_logs/{logId} {
       allow read: if isAdmin();
-      allow write: if false; // Only Cloud Functions can write to audit logs safely
+      allow write: if false; 
     }
 
     match /transactions/{txId} {
-      allow read: if resource != null && isOwner(resource.data.userId);
-      allow create: if isAuthenticated() && request.resource.data.userId == request.auth.uid;
+      allow read: if resource != null && (isOwner(resource.data.userId) || isAdmin());
+      allow create: if isAuthenticated() && 
+                       request.resource.data.userId == request.auth.uid && 
+                       request.resource.data.status == 'completed' && 
+                       request.resource.data.type in ['premium_profile', 'bidding_credits', 'bid_submission'];
       allow write: if false; 
+    }
+
+    match /credit_purchases/{purchaseId} {
+      allow create: if isAuthenticated() && request.resource.data.lawyerId == request.auth.uid;
+      allow read: if isAuthenticated() && resource.data.lawyerId == request.auth.uid;
+      allow update, delete: if false;
     }
   }
 }

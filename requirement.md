@@ -1,102 +1,111 @@
-# Software Requirements Specification (SRS): LegalEase
+# Software Requirements Specification (SRS): Haqooq Platform
 
-## 1. System Roles & Authentication
-The system will utilize Firebase Authentication to manage the following distinct user roles:
-* [cite_start]**Guest User:** Can access the Welcome Screen and view limited generic platform data[cite: 114, 118].
-* [cite_start]**Client:** Standard authenticated user seeking legal assistance[cite: 2].
-* [cite_start]**Lawyer:** Professional user requiring a two-step verification process (registration followed by credential approval)[cite: 50, 54].
-* **System Admin (Added Requirement):** A necessary backend role to verify uploaded lawyer credentials, handle disputes, and monitor platform health.
-
-## 2. Client Side Features
-* [cite_start]**Profile Management:** Standard CRUD operations for user details including registration, login, logout, and profile updates[cite: 5, 6, 7].
-* **AI Legal Assistance:**
-    * [cite_start]Users input a natural language description of their legal issue[cite: 9, 127].
-    * [cite_start]A Cloud Function securely passes the query to the AI engine to detect the case category (e.g., Property / Civil dispute)[cite: 10, 96, 97].
-    * [cite_start]The system returns recommended lawyers matching the detected category[cite: 12, 98, 99].
-* **Advanced Lawyer Search:**
-    * [cite_start]Manual search integrated with a third-party indexing service (like Algolia) to bypass Firebase's NoSQL search limitations[cite: 14].
-    * [cite_start]Filters include: City, Law Category, and Experience level[cite: 15, 16, 17, 18].
-* **Case Marketplace (Posting):**
-    * [cite_start]Clients can post cases including a title, detailed description, category, and an optional budget constraint[cite: 27, 28, 29, 30, 31, 32].
-    * [cite_start]Clients review incoming lawyer proposals (bids) and can accept a preferred lawyer[cite: 35, 36, 170].
-* **Case Tracking & Real-Time Messaging:**
-    * [cite_start]Firebase Realtime Database/Firestore handles live chat messaging between the client and assigned lawyer[cite: 37, 38].
-    * [cite_start]Clients view a dynamic timeline of case status updates (e.g., Case filed, Hearing completed, Next hearing date)[cite: 39, 40, 42, 43, 46, 47, 48].
-
-## 3. Lawyer Side Features
-* **Professional Onboarding:**
-    * [cite_start]Lawyers create profiles detailing specialization and experience[cite: 51, 52, 53].
-    * [cite_start]Must securely upload credential documents to Firebase Cloud Storage for verification[cite: 54].
-* **Client Acquisition & Bidding System:**
-    * [cite_start]Lawyers receive AI-matched client leads or discover available cases posted by clients in the marketplace[cite: 57, 59, 189].
-    * [cite_start]Lawyers submit proposals containing a proposed fee and a custom message to the client[cite: 63, 64, 65].
-* **Client Management Dashboard:**
-    * [cite_start]A centralized hub showing active clients, active cases, and new case requests[cite: 67, 68, 69, 183].
-    * [cite_start]Lawyers can push progress updates (e.g., Next hearing date, Case closed) which trigger push notifications to the client's device[cite: 71, 72, 75, 76, 77].
-
-## 4. Monetization & Dummy Payment Interface
-To future-proof the application, all financial transactions will be routed through an abstract `PaymentService` class, designed for seamless future integration with production gateways like Stripe or Easypaisa.
-* **Dummy Mode (Current State):** The interface will process mock transactions using test cards, simulating successful or failed network responses without processing real money. 
-* **Monetization Triggers:** The dummy service will mock transactions for the following lawyer actions:
-    * [cite_start]Purchasing a Premium profile or Featured listing[cite: 101, 102, 104].
-    * [cite_start]Paying for Keyword ranking boosts[cite: 103].
-    * [cite_start]Purchasing Bidding credits[cite: 105].
-    * [cite_start]Platform extracting a Commission per client acquired[cite: 106].
-
-## 5. Non-Functional & Architectural Requirements
-* **Security:** Firestore Security Rules must strictly isolate user data so clients can only read their own case details and chat logs.
-* **Cross-Platform UI:** Built with React Native to ensure a consistent look, feel, and performance across iOS and Android.
-* [cite_start]**Scalable Searching:** Implementation of third-party indexing synced with Firestore to efficiently handle the "Rank on keywords" feature[cite: 80].
-
-## 6. Admin Panel (New)
-The Admin Panel is a web-based application (Next.js) for platform administrators to manage users, transactions, and to perform oversight.
-
-- **Authentication & Roles:** Admins authenticate via Firebase Authentication and are authorized using server-side checks (firebase-admin). Admin role documents are stored in the `users` collection with `role: "admin"`.
-- **Key Capabilities:**
-    - User management: search, view, edit (suspend/activate) users and lawyers.
-    - Surveillance: view chat threads and messages across the platform for moderation and dispute resolution.
-    - Credit purchase approvals: review submitted payment proofs (Easypaisa receipts), approve/reject requests, and trigger server-side credit assignment.
-    - Transaction and audit logs: view all transactions, credit assignments, admin actions, and export logs for compliance.
-    - Notifications: send platform notifications to individual users or broadcast messages.
-
-## 7. Credits, Payments & Easypaisa (Latest Feature)
-This release adds a credits-based purchase system and a manual Easypaisa integration suitable for regions where direct gateway integration is not yet available.
-
-- **Client Flow (Mobile - Lawyer):**
-    - Lawyer selects a credit package in the app (`ProServicesScreen`).
-    - Lawyer submits Easypaisa payment by uploading a receipt screenshot via the `EasypaisaCheckoutModal`.
-    - A `credit_purchases` document is created in Firestore with status `pending` and the uploaded receipt stored in Firebase Storage.
-
-- **Admin Flow (Web - Admin Panel):**
-    - Admin reviews pending `credit_purchases` in the Admin Panel `Credits` page.
-    - On approval, an authenticated server-side API (using `firebase-admin`) increments the user's `credits` field atomically, creates a `transactions` ledger entry, and sets the purchase `status` to `approved`.
-    - The admin may reject a purchase, providing a reason; the document is updated with `status: rejected` and a notification is sent to the user.
-
-- **Technical Notes:**
-    - All credit assignment and transaction ledger updates are performed by secure server-side code (Next.js API routes calling `firebase-admin` or Cloud Functions). Client-side trust is avoided for monetary operations.
-    - The `PaymentService` abstraction remains for future gateway integrations; current Easypaisa flow is manual proof-based.
-
-## 8. Surveillance, Moderation & Notifications
-- **Surveillance UI:** Admins can open a chat thread and read messages in read-only mode for monitoring or investigations. API endpoints exist to fetch chat lists and chat messages using admin credentials.
-- **Moderation Actions:** Admins can flag messages, create evidence entries, and initiate account reviews.
-- **Notifications:** The platform supports system notifications delivered via Firebase Cloud Messaging. Admin-triggered notifications create documents in `notifications` and may be pushed to devices.
-
-## 9. Deployment, Environment & Security
-- **Environment sync:** The web `.env.local` holds `NEXT_PUBLIC_FIREBASE_*` keys and a `FIREBASE_SERVICE_ACCOUNT` (JSON) used by server-side admin APIs. Service account JSON should not be committed to the repository in production — store securely in the host (Vercel, Netlify, or CI) environment variables.
-- **Server-side checks:** All admin-only APIs validate the caller's admin status using `firebase-admin` and Firestore user role fields.
-- **Firestore Rules:** Continue to enforce that client-side code cannot increment `credits` or write `transactions` directly. Any write that affects user balance must be performed by a server-side admin API or Cloud Function.
-- **Audit Logging:** All admin approvals, rejections, and credit assignments must create an immutable `audit_logs` entry with timestamp, admin uid, action, and affected document id.
-
-## 10. Test Cases & Validation (Updated)
-- E2E test for credits purchase flow:
-    1. Lawyer uploads receipt and creates `credit_purchases` with `pending` status.
-    2. Admin approves via Admin Panel API; user's `credits` incremented; `transactions` and `audit_logs` entries created; notification generated.
-    3. Rejection path: Admin rejects; `credit_purchases.status` becomes `rejected` with an admin reason; notification generated.
-
-## 11. Miscellaneous Updates
-- **Currency:** All UI currency displays are standardized to PKR across web and mobile (Intl.NumberFormat('en-PK', { currency: 'PKR' })).
-- **Created Admin Account (dev):** An initial admin user `admin@haqooq.com` was created for testing and platform bootstrapping — remove or rotate credentials before production deployment.
-- **APIs added:** `/api/chats`, `/api/chats/[chatId]`, `/api/credit_requests` (admin), and other administration endpoints implemented server-side.
+This document describes the platform-wide requirements for Haqooq, encompassing both the mobile client app (for clients and lawyers) and the web administration panel.
 
 ---
-_Document last updated: May 22, 2026 — includes admin panel, surveillance, credits & Easypaisa manual flow, notifications, and deployment/security guidance._
+
+## 1. System Roles & Authentication
+The platform utilizes Firebase Authentication to manage the following distinct user roles:
+* **Client:** Standard authenticated user seeking legal assistance. Can post cases, search for lawyers, review bids, manage active cases, and chat in real-time.
+* **Lawyer:** Professional user requiring verification. Can upload credentials, view open cases, submit proposals (bids) using credits, update case timelines, and chat with clients.
+* **System Admin:** Administrative role that manages platform health, verifies lawyer credentials, monitors disputes, and processes manual payment requests.
+* *Note on Guest User:* While defined in database type definitions, the mobile app requires authentication to view screens; a standalone unauthenticated guest browsing mode is not active in the current navigation path.
+
+### Authentication Features
+* **Credentials Sign-In & Registration:** Standard email and password authentication.
+* **Strong Password Policy:** Registration enforces a robust password policy requiring at least 8 characters, at least one uppercase letter, one lowercase letter, and one numeric character.
+* **Social Authentication:** Native Google Sign-In integration for both login and registration flows.
+* **Forgot Password:** Automated email reset flow.
+* **Location & Specialization Onboarding:** During registration, lawyers must declare their operational city (Lahore, Karachi, Islamabad, or Rawalpindi) and primary legal category.
+
+---
+
+## 2. Lawyer Onboarding & Verification Queue
+* **Credential Submission:** Lawyers whose accounts are pending approval are directed to a document upload screen where they must select and upload a verification document (PDF or image) to Firebase Cloud Storage (saved under the `credentials/` path). This updates the `credentialUrl` on their profile.
+* **Verification Queue:** System Admins (via the Mobile Admin Screen or the Web Admin Panel) review pending verification requests, inspect the uploaded credentials, and approve the lawyer (updating their status to `verified` and unlocking the marketplace).
+
+---
+
+## 3. Client-Side Features
+* **Profile Management:**
+    * Update personal details (Full Name, Phone Number).
+    * Custom avatar upload (images uploaded to Firebase Storage under `avatars/` path).
+* **AI Case Classification:** 
+    * Clients describe their legal problem in plain English.
+    * The client-side application analyzes the text using the Groq LLaMA 3.3 API model (with a local regex-based NLP parsing fallback if the API key is not configured) to categorize the case into one of the core specialties (Property / Real Estate Law, Family Law, Corporate Law, Criminal Law, Civil Litigation).
+* **Case Marketplace (Posting):** 
+    * Post categorized legal cases to the marketplace with a title, description, category, and an optional budget limit in PKR.
+* **Case Management & Proposals:** 
+    * Review incoming bidding proposals/proposals from lawyers.
+    * Accept a lawyer's proposal using an atomic Firestore transaction that:
+        1. Updates the accepted proposal status to `accepted` and rejects all competing proposals.
+        2. Assigns the lawyer to the case and shifts case status to `active`.
+        3. Appends a "Lawyer Assigned" timeline event.
+        4. Initializes a dedicated real-time chat thread.
+        5. Triggers a background push notification to notify the lawyer.
+    * View active cases, follow a dynamic chronological timeline of case status events, and mark active cases as closed/resolved.
+
+---
+
+## 4. Lawyer-Side Features
+* **Case Feed (Marketplace):** 
+    * Browse a real-time list of open client cases in the marketplace.
+    * View case details, including client information, posting date, description, and budget.
+* **Proposal Submission (Bidding):** 
+    * Submit bids on open cases containing a proposed fee (PKR) and a custom message.
+    * Submitting a proposal requires and deducts **1 bidding credit**.
+    * Client-side duplicate checks prevent submitting multiple bids on a single case.
+* **Trust & Safety Reporting:** 
+    * Lawyers can report suspicious or inappropriate cases from the feed.
+    * Reports are categorized (Scam/Fraud, Spam, Harassment, Inappropriate Content, Other) and logged in the Firestore `reports` collection for admin review.
+* **Client Management Dashboard:** 
+    * Centralized list showing active client cases and closed cases.
+    * Pushes progress updates and custom timeline milestones (e.g., Court hearing scheduled, Case closed) directly to Firestore, which alerts the client.
+
+---
+
+## 5. Advanced Lawyer Search
+* **Search Filters:** Clients can filter verified lawyers by text queries (matching display names or specialties), specific city, and law categories.
+* **Firestore Search Optimization:** Utilizes direct querying for verified lawyers combined with client-side filtering to bypass Firestore compound indexing constraints.
+* **Ranking Logic:** Premium/featured lawyers are ranked first in results, followed by average rating performance.
+* **Direct Interaction:** Start a direct chat message thread immediately from search cards.
+
+---
+
+## 6. Monetization & Manual P2P Payment Verification
+To support monetization, the application implements a manual Peer-to-Peer (P2P) payment verification flow:
+* **Credit Packs:** Lawyers purchase credits to place marketplace bids:
+    * *Starter Pack:* 10 Credits for PKR 250 (12-month validity).
+    * *Professional Pack:* 50 Credits for PKR 1,000 (Lifetime validity, featured search placement).
+    * *Elite Pack:* 100 Credits for PKR 1,800 (Lifetime validity, highlighted profile, dedicated support).
+* **Interactive Easypaisa P2P Checkout:** 
+    * Displays instructions to transfer the package amount via Easypaisa to the designated account title (Mujahid Afridi) and number (03139330041).
+    * Forms capture transaction proof: Sender Account Title, Sender Easypaisa Number, Transaction ID / Reference Number, Transaction Date & Time, and an optional image upload of the payment receipt (stored in Firebase Storage under `receipts/`).
+    * Real-time duplicate validation checks against Firestore to reject pre-existing Transaction IDs.
+    * Submissions enter a `pending` state in the `credit_purchases` collection.
+* **Transaction History Logs:** A real-time listener updates lawyers on their transaction approval status (`pending`, `approved`, or `rejected` with custom admin-provided rejection reasons).
+
+---
+
+## 7. Web Administration Panel
+The Admin Panel is a web-based application (Next.js) for platform administrators to manage users, transactions, and to perform platform oversight.
+* **Authentication & Roles:** Admins authenticate via Firebase Authentication and are authorized using server-side checks (`firebase-admin`). Admin roles are validated by checking that the user's document in the `users` collection has `role: "admin"`.
+* **User & Lawyer Management:** Search, view, and update (suspend/activate) user accounts and lawyer statuses.
+* **Credit Purchase Approvals:** Review pending `credit_purchases` requests and submitted Easypaisa payment receipts.
+    * On approval, the admin triggers a server-side API (Next.js route) that atomically increments the lawyer's `credits` balance, records a completed ledger entry in `transactions`, and sets the purchase status to `approved`.
+    * On rejection, the admin provides a custom rejection reason, which updates the status to `rejected` and alerts the lawyer.
+* **Surveillance and Chat Moderation:** View active chat threads and messages across the platform in read-only mode for moderation, dispute resolution, and trust & safety review.
+* **Audit Logging:** Implements an immutable system ledger for administrative oversight. Actions such as credit approvals, rejections, user suspensions, and role changes generate entries in the `audit_logs` collection.
+
+---
+
+## 8. Non-Functional & Infrastructure Requirements
+* **Security & Database Rules:** Firestore security rules strictly isolate user data. Clients can only access their own cases and chat threads. Write permissions on financial transactions (`transactions`) and direct balance increments (`credits`) are blocked client-side; they must be triggered via secure server-side routes using `firebase-admin` credentials.
+* **Cross-Platform UI:** Mobile application built with React Native (Expo) to ensure a consistent look, feel, and performance across iOS and Android.
+* **Error Tracking:** Configured using the Sentry SDK to monitor exceptions and track runtime application crashes.
+* **Expo Notifications:** Device tokens (`expoPushToken`) are registered on sign-in/registration and updated dynamically to support live push alerts for bids, chats, and timeline adjustments.
+* **TanStack Query:** Caching layer for efficient searching, minimizing duplicate database reads.
+* **Zod Schemas:** Enforces schema structure validation at runtime on incoming search filters, user documents, and profile payloads.
+
+---
+_Document last updated: June 6, 2026 — aligned requirements with actual mobile and web implementation details._

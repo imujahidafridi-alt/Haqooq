@@ -5,7 +5,7 @@ export interface UserProfile {
   role: UserRole;
   email?: string | null;
   displayName?: string | null;
-  status: 'pending' | 'verified' | 'rejected';
+  status: 'pending' | 'verified' | 'rejected' | 'suspended';
   photoURL?: string | null;
   phone?: string;
   credentialUrl?: string;

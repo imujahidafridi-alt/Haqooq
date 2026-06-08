@@ -1,10 +1,11 @@
 "use client";
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/components/providers/AuthProvider';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
+import { Eye, EyeOff } from 'lucide-react';
 import toast, { Toaster } from 'react-hot-toast';
 
 export default function LoginPage() {
@@ -12,11 +13,14 @@ export default function LoginPage() {
   const { user, loading, signIn } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  if (!loading && user) {
-    router.push('/dashboard');
-  }
+  useEffect(() => {
+    if (!loading && user) {
+      router.push('/dashboard');
+    }
+  }, [loading, user, router]);
 
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -51,14 +55,28 @@ export default function LoginPage() {
             placeholder="admin@haqooq.com"
             required
           />
-          <Input
-            label="Password"
-            type="password"
-            value={password}
-            onChange={(event) => setPassword(event.target.value)}
-            placeholder="Your secure password"
-            required
-          />
+          
+          <div className="space-y-2">
+            <label className="block text-sm font-medium text-slate-350">Password</label>
+            <div className="relative">
+              <input
+                type={showPassword ? 'text' : 'password'}
+                value={password}
+                onChange={(event) => setPassword(event.target.value)}
+                placeholder="Your secure password"
+                className="w-full rounded-2xl border border-slate-800 bg-slate-950/90 pl-4 pr-12 py-3 text-sm text-slate-100 shadow-input transition placeholder:text-slate-500 focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/20"
+                required
+              />
+              <button
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white transition"
+              >
+                {showPassword ? <EyeOff className="h-4.5 w-4.5" /> : <Eye className="h-4.5 w-4.5" />}
+              </button>
+            </div>
+          </div>
+
           <Button type="submit" isLoading={isSubmitting} className="w-full">
             Sign in
           </Button>

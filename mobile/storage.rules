@@ -8,11 +8,18 @@ service firebase.storage {
       return request.auth != null;
     }
 
-    match /credentials/{document=**} {
-      // Any authenticated user can upload their own credentials
-      allow write: if isAuthenticated();
-      // Only admins and the owner should be reading these
-      allow read: if isAuthenticated(); // In a strict prod environment, match owner or admin claim
+    match /credentials/{filename} {
+      // Any authenticated user can upload their own credentials (prefixed by their user UID)
+      allow write: if isAuthenticated() && filename.startsWith(request.auth.uid);
+      // Only the owner lawyer or an administrator can read the credentials
+      allow read: if isAuthenticated() && (filename.startsWith(request.auth.uid) || (firestore.exists(/databases/(default)/documents/users/$(request.auth.uid)) && firestore.get(/databases/(default)/documents/users/$(request.auth.uid)).data.role == 'admin'));
+    }
+
+    match /receipts/{filename} {
+      // Any authenticated user can upload receipt screenshot prefixed with their UID
+      allow write: if isAuthenticated() && filename.startsWith(request.auth.uid);
+      // Only the owner lawyer or an administrator can read the receipt
+      allow read: if isAuthenticated() && (filename.startsWith(request.auth.uid) || (firestore.exists(/databases/(default)/documents/users/$(request.auth.uid)) && firestore.get(/databases/(default)/documents/users/$(request.auth.uid)).data.role == 'admin'));
     }
     
     match /{allPaths=**} {

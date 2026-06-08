@@ -68,8 +68,12 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
   const signIn = async (email: string, password: string) => {
     setLoading(true);
-    await signInWithEmailAndPassword(firebaseAuth, email, password);
-    setLoading(false);
+    try {
+      await signInWithEmailAndPassword(firebaseAuth, email, password);
+    } catch (error) {
+      setLoading(false);
+      throw error;
+    }
   };
 
   const signOutAdmin = async () => {

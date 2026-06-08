@@ -1,6 +1,6 @@
 "use client";
 
-import React from 'react';
+import React, { useState } from 'react';
 import { Sidebar } from './Sidebar';
 import { Topbar } from './Topbar';
 import { useAuth } from '@/components/providers/AuthProvider';
@@ -9,6 +9,7 @@ import { useRouter } from 'next/navigation';
 export const PageShell = ({ title, children }: { title: string; children: React.ReactNode }) => {
   const { user, loading } = useAuth();
   const router = useRouter();
+  const [sidebarOpen, setSidebarOpen] = useState(false);
 
   React.useEffect(() => {
     if (!loading && !user) {
@@ -29,10 +30,10 @@ export const PageShell = ({ title, children }: { title: string; children: React.
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100">
       <div className="flex min-h-screen">
-        <Sidebar />
-        <main className="flex-1">
-          <Topbar title={title} />
-          <div className="px-6 py-8">{children}</div>
+        <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
+        <main className="flex-1 min-w-0">
+          <Topbar title={title} onMenuClick={() => setSidebarOpen(true)} />
+          <div className="px-4 py-6 sm:px-6 sm:py-8">{children}</div>
         </main>
       </div>
     </div>
