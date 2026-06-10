@@ -10,13 +10,14 @@
     "splash": {
       "image": "./assets/splash-icon.png",
       "resizeMode": "contain",
-      "backgroundColor": "#ffffff"
+      "backgroundColor": "#0F172A"
     },
     "ios": {
       "supportsTablet": true
     },
     "android": {
       "package": "com.haqooq",
+      "googleServicesFile": "./google-services.json",
       "adaptiveIcon": {
         "backgroundColor": "#E6F4FE",
         "foregroundImage": "./assets/android-icon-foreground.png",
@@ -31,7 +32,6 @@
     "plugins": [
       "expo-web-browser",
       "@react-native-google-signin/google-signin",
-      "sentry-expo",
       "@sentry/react-native"
     ]
   }

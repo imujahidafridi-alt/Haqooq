@@ -1,6 +1,5 @@
 import React, { useEffect, useRef } from 'react';
-import { View, Text, StyleSheet, Animated, Dimensions } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
+import { View, Text, StyleSheet, Animated, Dimensions, Image } from 'react-native';
 
 const { width } = Dimensions.get('window');
 
@@ -26,9 +25,11 @@ export const SplashScreen = () => {
   return (
     <View style={styles.container}>
       <Animated.View style={[styles.content, { opacity: opacityValue, transform: [{ scale: scaleValue }] }]}>
-        <View style={styles.logoCircle}>
-          <Ionicons name="scale" size={60} color="#1A365D" />
-        </View>
+        <Image 
+          source={require('../../../assets/logo.png')} 
+          style={styles.logoImage} 
+          resizeMode="contain" 
+        />
         <Text style={styles.appName}>Haqooq</Text>
         <Text style={styles.tagline}>Empowering Your Legal Rights</Text>
       </Animated.View>
@@ -46,19 +47,11 @@ const styles = StyleSheet.create({
   content: {
     alignItems: 'center',
   },
-  logoCircle: {
+  logoImage: {
     width: 120,
     height: 120,
-    borderRadius: 60,
-    backgroundColor: '#FFFFFF',
-    justifyContent: 'center',
-    alignItems: 'center',
+    borderRadius: 24, // Rounded corners for premium app icon look
     marginBottom: 24,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 5,
-    elevation: 8,
   },
   appName: {
     fontSize: 40,

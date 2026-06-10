@@ -173,8 +173,18 @@ export const ProfileScreen = () => {
           </TouchableOpacity>
           
           <Text style={styles.emailText}>{profile?.email}</Text>
-          <View style={[styles.badge, profile?.status === 'verified' ? styles.badgeVerified : styles.badgePending]}>
-            <Text style={styles.badgeText}>{profile?.status.toUpperCase()}</Text>
+          <View style={{ flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', justifyContent: 'center', marginTop: 4 }}>
+            <View style={[styles.badge, profile?.status === 'verified' ? styles.badgeVerified : styles.badgePending, { marginHorizontal: 4 }]}>
+              <Text style={[styles.badgeText, profile?.status === 'verified' ? { color: '#03543F' } : { color: '#723B10' }]}>
+                {profile?.status.toUpperCase()}
+              </Text>
+            </View>
+            {profile?.role === 'lawyer' && (
+              <View style={[styles.creditsBadge, { marginHorizontal: 4 }]}>
+                <Ionicons name="star" size={14} color="#1d4ed8" style={{ marginRight: 4 }} />
+                <Text style={styles.creditsBadgeText}>{(profile as LawyerProfile).credits || 0} Credits</Text>
+              </View>
+            )}
           </View>
         </View>
 
@@ -277,6 +287,22 @@ const styles = StyleSheet.create({
   badgeVerified: { backgroundColor: '#DEF7EC' },
   badgePending: { backgroundColor: '#FEF3C7' },
   badgeText: { fontSize: 12, fontWeight: 'bold', color: Colors.primary },
+  creditsBadge: {
+    backgroundColor: '#EFF6FF',
+    paddingHorizontal: 12,
+    paddingVertical: 4,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: '#BFDBFE',
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 4,
+  },
+  creditsBadgeText: {
+    fontSize: 12,
+    fontWeight: 'bold',
+    color: '#1D4ED8',
+  },
   
   sectionCard: { backgroundColor: Colors.surface, padding: 20, borderRadius: 16, marginBottom: 20, elevation: 2, shadowColor: '#000', shadowOpacity: 0.04, shadowRadius: 8, shadowOffset: { width: 0, height: 4 } },
   sectionHeading: { fontSize: 18, fontWeight: '700', color: Colors.primary, marginBottom: 16 },

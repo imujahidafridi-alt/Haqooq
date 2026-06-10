@@ -142,12 +142,12 @@ export const ProServicesScreen = () => {
             </View>
 
             <View style={styles.pricingContainer}>
-              <Text style={[styles.price, { color: Colors.primary }]}>PKR 250</Text>
+              <Text style={[styles.price, { color: Colors.primary }]}>PKR 100</Text>
               <Text style={styles.billingCycle}>for 10 Credits</Text>
             </View>
             <Button 
               title="Buy Starter Pack" 
-              onPress={() => initiateCheckout('Starter Pack', 10, 250)} 
+              onPress={() => initiateCheckout('Starter Pack', 10, 100)} 
               style={styles.standardActionBtn}
             />
           </View>
@@ -157,16 +157,16 @@ export const ProServicesScreen = () => {
             <View style={styles.cardHeader}>
               <View style={styles.badgeContainer}>
                 <Ionicons name="shield-checkmark" size={22} color="#D4AF37" />
-                <Text style={styles.featureTitle}>Professional Pack</Text>
+                <Text style={[styles.featureTitle, { color: '#FFFFFF' }]}>Professional Pack</Text>
               </View>
-              <Text style={[styles.planValidity, { color: '#D4AF37' }]}>Lifetime Validity</Text>
+              <Text style={[styles.planValidity, { color: '#D4AF37', backgroundColor: '#1e293b' }]}>Lifetime Validity</Text>
             </View>
             <Text style={[styles.featureDesc, { color: '#E2E8F0' }]}>Recommended for active professionals. Substantial savings on credit acquisitions.</Text>
             
-            <View style={styles.benefitsContainer}>
+            <View style={[styles.benefitsContainer, { backgroundColor: '#1e293b' }]}>
               <View style={styles.benefitRow}>
                 <Ionicons name="checkmark-circle" size={16} color="#D4AF37" />
-                <Text style={[styles.benefitText, { color: '#F1F5F9' }]}>50 Bidding Credits</Text>
+                <Text style={[styles.benefitText, { color: '#F1F5F9' }]}>100 Bidding Credits</Text>
               </View>
               <View style={styles.benefitRow}>
                 <Ionicons name="checkmark-circle" size={16} color="#D4AF37" />
@@ -180,11 +180,11 @@ export const ProServicesScreen = () => {
 
             <View style={styles.pricingContainer}>
               <Text style={[styles.price, { color: '#FFF' }]}>PKR 1,000</Text>
-              <Text style={[styles.billingCycle, { color: '#cbd5e1' }]}>for 50 Credits</Text>
+              <Text style={[styles.billingCycle, { color: '#cbd5e1' }]}>for 100 Credits</Text>
             </View>
             <Button 
               title="Buy Professional Pack" 
-              onPress={() => initiateCheckout('Professional Pack', 50, 1000)} 
+              onPress={() => initiateCheckout('Professional Pack', 100, 1000)} 
               style={styles.premiumActionBtn}
               textStyle={styles.premiumBtnText}
             />
@@ -204,7 +204,11 @@ export const ProServicesScreen = () => {
             <View style={styles.benefitsContainer}>
               <View style={styles.benefitRow}>
                 <Ionicons name="checkmark-circle" size={16} color={Colors.success} />
-                <Text style={styles.benefitText}>100 Bidding Credits</Text>
+                <Text style={styles.benefitText}>200 Bidding Credits</Text>
+              </View>
+              <View style={styles.benefitRow}>
+                <Ionicons name="checkmark-circle" size={16} color={Colors.success} />
+                <Text style={styles.benefitText}>Profile Verified Badge</Text>
               </View>
               <View style={styles.benefitRow}>
                 <Ionicons name="checkmark-circle" size={16} color={Colors.success} />
@@ -222,11 +226,11 @@ export const ProServicesScreen = () => {
 
             <View style={styles.pricingContainer}>
               <Text style={[styles.price, { color: Colors.primary }]}>PKR 1,800</Text>
-              <Text style={styles.billingCycle}>for 100 Credits</Text>
+              <Text style={styles.billingCycle}>for 200 Credits</Text>
             </View>
             <Button 
               title="Buy Elite Pack" 
-              onPress={() => initiateCheckout('Elite Pack', 100, 1800)} 
+              onPress={() => initiateCheckout('Elite Pack', 200, 1800)} 
               style={styles.standardActionBtn}
             />
           </View>

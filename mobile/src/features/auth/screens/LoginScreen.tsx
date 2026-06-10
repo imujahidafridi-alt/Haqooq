@@ -91,9 +91,11 @@ export const LoginScreen = ({ navigation }: any) => {
           <View style={styles.container}>
             {/* Header Section */}
             <View style={styles.headerContainer}>
-              <View style={styles.logoCircle}>
-                <Ionicons name="scale" size={40} color="#1A365D" />
-              </View>
+              <Image 
+                source={require('../../../../assets/logo.png')} 
+                style={styles.logoImage} 
+                resizeMode="contain" 
+              />
               <Text style={styles.title}>Haqooq</Text>
               <Text style={styles.subtitle}>Sign in to continue</Text>
             </View>
@@ -208,19 +210,11 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: 40,
   },
-  logoCircle: {
+  logoImage: {
     width: 80,
     height: 80,
-    borderRadius: 40,
-    backgroundColor: '#E2E8F0',
-    alignItems: 'center',
-    justifyContent: 'center',
+    borderRadius: 16,
     marginBottom: 16,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 2,
   },
   title: {
     fontSize: 28,

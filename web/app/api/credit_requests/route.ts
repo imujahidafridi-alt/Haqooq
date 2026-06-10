@@ -110,8 +110,12 @@ export const POST = async (request: Request) => {
         // 1. Update purchase request
         transaction.update(docRef, { status: 'approved', processedAt: new Date().toISOString() });
         
-        // 2. Increment credits
-        transaction.update(userRef, { credits: FieldValue.increment(creditsToAdd) });
+        // 2. Increment credits and auto-verify lawyer if Elite Pack was purchased
+        const updateData: any = { credits: FieldValue.increment(creditsToAdd) };
+        if (data.planName === 'Elite Pack') {
+          updateData.status = 'verified';
+        }
+        transaction.update(userRef, updateData);
         
         // 3. Create transaction ledger entry
         transaction.set(transRef, {
