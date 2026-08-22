@@ -42,6 +42,7 @@ export default function LoginPage() {
       <Toaster position="top-center" />
       <div className="w-full max-w-md rounded-[32px] border border-slate-800 bg-slate-900/95 p-10 shadow-2xl shadow-slate-950/40">
         <div className="mb-8">
+          <img src="/logo.png" alt="Haqooq Logo" className="h-16 w-16 mb-4 rounded-2xl object-contain shadow-md" />
           <p className="text-xs uppercase tracking-[0.4em] text-slate-500">Haqooq Admin</p>
           <h1 className="mt-4 text-3xl font-semibold text-white">Secure sign in</h1>
           <p className="mt-3 text-sm leading-6 text-slate-400">Only authorized admin accounts can access governance workflows.</p>

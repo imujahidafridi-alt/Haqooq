@@ -9,9 +9,12 @@ export default function PrivacyPolicyPage() {
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100 py-12 px-4 sm:px-6 lg:px-8">
       <div className="max-w-4xl mx-auto bg-slate-900/80 border border-slate-800 rounded-2xl p-6 sm:p-10 shadow-2xl backdrop-blur">
-        <header className="border-b border-slate-800 pb-6 mb-8">
-          <h1 className="text-3xl sm:text-4xl font-bold text-white tracking-tight">Privacy Policy for Haqooq</h1>
-          <p className="text-sm text-slate-400 mt-2">Effective Date: August 20, 2026 | Last Updated: August 20, 2026</p>
+        <header className="border-b border-slate-800 pb-6 mb-8 flex items-center gap-4">
+          <img src="/logo.png" alt="Haqooq Logo" className="h-14 w-14 rounded-2xl object-contain shadow-lg" />
+          <div>
+            <h1 className="text-3xl sm:text-4xl font-bold text-white tracking-tight">Privacy Policy for Haqooq</h1>
+            <p className="text-sm text-slate-400 mt-1">Effective Date: August 20, 2026 | Last Updated: August 20, 2026</p>
+          </div>
         </header>
 
         <section className="space-y-8 text-slate-300 leading-relaxed text-sm sm:text-base">

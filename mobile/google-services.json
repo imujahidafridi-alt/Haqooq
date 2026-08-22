@@ -14,6 +14,14 @@
       },
       "oauth_client": [
         {
+          "client_id": "99158635959-luf9bhbfgn5nmuj85c3iifh7fl1vd4lh.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.haqooq",
+            "certificate_hash": "a5fd3d594ee3e3b0390463e782a7597b896b55df"
+          }
+        },
+        {
           "client_id": "99158635959-ue013dkecgbhrd94lkp0c62ljrv9vj1a.apps.googleusercontent.com",
           "client_type": 1,
           "android_info": {

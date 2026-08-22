@@ -49,9 +49,12 @@ export const Sidebar = ({ isOpen, onClose }: SidebarProps) => {
     <div className="flex h-full flex-col justify-between">
       <div>
         <div className="flex items-center justify-between mb-8">
-          <div>
-            <p className="text-xs uppercase tracking-[0.36em] text-slate-500">Haqooq Admin</p>
-            <h1 className="mt-2.5 text-2xl font-bold text-white tracking-tight">Governance</h1>
+          <div className="flex items-center gap-3">
+            <img src="/logo.png" alt="Haqooq" className="h-10 w-10 rounded-xl object-contain shadow-md" />
+            <div>
+              <p className="text-[10px] uppercase tracking-[0.3em] text-slate-500 font-semibold">Haqooq Admin</p>
+              <h1 className="text-xl font-bold text-white tracking-tight">Governance</h1>
+            </div>
           </div>
           {onClose && (
             <button
