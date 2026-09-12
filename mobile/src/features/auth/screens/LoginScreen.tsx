@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import {
   View, StyleSheet, TextInput, Text, Alert,
   TouchableOpacity, ActivityIndicator, KeyboardAvoidingView,
-  Platform, TouchableWithoutFeedback, Keyboard, Image
+  Platform, TouchableWithoutFeedback, Keyboard, Image, ScrollView
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useAuthStore } from '../../../store/authStore';
@@ -10,6 +10,7 @@ import { loginUser, signInWithGoogleCredential } from '../services/authService';
 import { GoogleSignin, statusCodes, isErrorWithCode } from '@react-native-google-signin/google-signin';
 import { Ionicons } from '@expo/vector-icons';
 import { handleAuthError } from '../../../utils/authErrorHandler';
+import { KeyboardAwareScrollView, KeyboardAwareTextInput } from '../../../components/ui/KeyboardAwareScrollView';
 
 export const LoginScreen = ({ navigation }: any) => {
   const [email, setEmail] = useState('');
@@ -83,9 +84,11 @@ export const LoginScreen = ({ navigation }: any) => {
 
   return (
     <SafeAreaView style={styles.safeArea}>
-      <KeyboardAvoidingView
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-        style={{ flex: 1 }}
+      <KeyboardAwareScrollView 
+        contentContainerStyle={{ flexGrow: 1 }} 
+        keyboardShouldPersistTaps="handled"
+        showsVerticalScrollIndicator={false}
+        extraScrollHeight={50}
       >
         <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
           <View style={styles.container}>
@@ -104,7 +107,7 @@ export const LoginScreen = ({ navigation }: any) => {
             <View style={styles.formContainer}>
               <View style={[styles.inputContainer, isLoading && styles.inputDisabled]}>
                 <Ionicons name="mail-outline" size={20} color="#64748B" style={styles.inputIcon} />
-                <TextInput
+                <KeyboardAwareTextInput
                   testID="emailInput"
                   style={styles.input}
                   placeholder="Email Address"
@@ -120,7 +123,7 @@ export const LoginScreen = ({ navigation }: any) => {
 
               <View style={[styles.inputContainer, isLoading && styles.inputDisabled]}>
                 <Ionicons name="lock-closed-outline" size={20} color="#64748B" style={styles.inputIcon} />
-                <TextInput
+                <KeyboardAwareTextInput
                   testID="passwordInput"
                   style={styles.input}
                   placeholder="Password"
@@ -191,7 +194,7 @@ export const LoginScreen = ({ navigation }: any) => {
 
           </View>
         </TouchableWithoutFeedback>
-      </KeyboardAvoidingView>
+      </KeyboardAwareScrollView>
     </SafeAreaView>
   );
 };

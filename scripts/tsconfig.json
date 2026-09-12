@@ -1,0 +1,22 @@
+{
+  "compilerOptions": {
+    "target": "es2022",
+    "module": "commonjs",
+    "moduleResolution": "node",
+    "strict": true,
+    "skipLibCheck": true,
+    "esModuleInterop": true,
+    "baseUrl": ".",
+    "typeRoots": [
+      "../mobile/firebase-functions/node_modules/@types",
+      "../mobile/node_modules/@types"
+    ],
+    "paths": {
+      "firebase-admin": ["../mobile/firebase-functions/node_modules/firebase-admin"],
+      "firebase-admin/*": ["../mobile/firebase-functions/node_modules/firebase-admin/*"],
+      "algoliasearch": ["../mobile/firebase-functions/node_modules/algoliasearch"],
+      "firebase/*": ["../mobile/node_modules/firebase/*"]
+    }
+  },
+  "include": ["**/*.ts"]
+}

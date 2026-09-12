@@ -1,14 +1,21 @@
 import React, { useState } from 'react';
-import { View, StyleSheet, Text, Alert, Platform, SafeAreaView } from 'react-native';
+import { View, StyleSheet, Text, Alert, Platform, SafeAreaView, TouchableOpacity, ScrollView } from 'react-native';
 import * as DocumentPicker from 'expo-document-picker';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { doc, updateDoc } from 'firebase/firestore';
+import { Ionicons } from '@expo/vector-icons';
 import { storage, db } from '../../../services/firebaseConfig';
 import { Button } from '../../../components/ui/Button';
 import { Card } from '../../../components/ui/Card';
 import { useAuthStore } from '../../../store/authStore';
 import { logoutUser } from '../../auth/services/authService';
 import { Colors } from '../../../utils/Colors';
+import { 
+  SUPPORT_CONFIG, 
+  contactSupportViaPhone, 
+  contactSupportViaEmail, 
+  contactSupportViaWhatsApp 
+} from '../../../constants/supportConfig';
 
 export const PendingApprovalScreen = () => {
   const { user, logout } = useAuthStore();
@@ -145,11 +152,36 @@ export const PendingApprovalScreen = () => {
           </>
         )}
 
+        {/* Support & Verification Helpline */}
+        <View style={styles.supportBox}>
+          <Text style={styles.supportTitle}>Need Help or Expedited Approval?</Text>
+          <Text style={styles.supportDesc}>
+            Contact Haqooq Legal Operations for assistance:
+          </Text>
+
+          <View style={styles.supportActionsRow}>
+            <TouchableOpacity style={styles.supportBtn} activeOpacity={0.7} onPress={contactSupportViaPhone}>
+              <Ionicons name="call" size={14} color={Colors.primary} />
+              <Text style={styles.supportBtnText}>{SUPPORT_CONFIG.phoneNumber}</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity style={styles.supportBtn} activeOpacity={0.7} onPress={() => contactSupportViaEmail()}>
+              <Ionicons name="mail" size={14} color={Colors.primary} />
+              <Text style={styles.supportBtnText}>Email Desk</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity style={[styles.supportBtn, { backgroundColor: '#DCFCE7', borderColor: '#86EFAC' }]} activeOpacity={0.7} onPress={() => contactSupportViaWhatsApp()}>
+              <Ionicons name="logo-whatsapp" size={14} color="#15803D" />
+              <Text style={[styles.supportBtnText, { color: '#15803D' }]}>WhatsApp</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+
         <Button 
           title="Sign Out" 
           variant="outline" 
           onPress={handleLogout}
-          style={{ marginTop: 24, width: '100%' }}
+          style={{ marginTop: 16, width: '100%' }}
         />
       </Card>
     </SafeAreaView>
@@ -214,5 +246,51 @@ const styles = StyleSheet.create({
     marginVertical: 10,
     lineHeight: 20,
     fontWeight: '500'
-  }
+  },
+  supportBox: {
+    marginTop: 20,
+    padding: 14,
+    backgroundColor: '#F8FAFC',
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    width: '100%',
+    alignItems: 'center',
+  },
+  supportTitle: {
+    fontSize: 13.5,
+    fontWeight: '700',
+    color: Colors.text,
+    marginBottom: 4,
+  },
+  supportDesc: {
+    fontSize: 12,
+    color: Colors.textSecondary,
+    textAlign: 'center',
+    marginBottom: 10,
+    lineHeight: 16,
+  },
+  supportActionsRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    width: '100%',
+  },
+  supportBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#EFF6FF',
+    borderColor: '#BFDBFE',
+    borderWidth: 1,
+    paddingHorizontal: 10,
+    paddingVertical: 7,
+    borderRadius: 8,
+    gap: 5,
+  },
+  supportBtnText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: Colors.primary,
+  },
 });

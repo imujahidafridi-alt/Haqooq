@@ -16,7 +16,7 @@ import { PublicProfileScreen } from '../features/shared/screens/PublicProfileScr
 import { onAuthStateChanged } from 'firebase/auth';
 import { doc, onSnapshot } from 'firebase/firestore';
 import { auth, db } from '../services/firebaseConfig';
-import { getCurrentUserProfile, logoutUser } from '../features/auth/services/authService';
+import { fetchUserProfileWithStatus, recoverOrphanProfile, logoutUser } from '../features/auth/services/authService';
 import { registerForPushNotificationsAsync } from '../services/notificationService';
 import { UserProfile } from '../types/models';
 
@@ -40,36 +40,47 @@ const AuthNavigator = () => (
 
 export const RootNavigator = () => {
   const { user, isLoading, setUser, setLoading, logout } = useAuthStore();
-  const [isSplashMinTimeDone, setIsSplashMinTimeDone] = useState(false);
 
   useEffect(() => {
-    // Enforce a minimum display time for the Splash Screen branding
-    const splashTimer = setTimeout(() => {
-      setIsSplashMinTimeDone(true);
-    }, 2500); // 2.5 seconds minimum to allow animations to breathe
-
-    // Enterprise Standard: Sync strictly with Firebase root auth state to handle token expiry / persistence
+    // Enterprise Zero-Trust: Sync strictly with Firebase root auth state
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
       try {
         if (firebaseUser) {
-          // If we already have the user in state with matching UID, don't overwrite 
+          // If we already have the user in state with matching UID, unblock immediately
           const currentStoreUser = useAuthStore.getState().user;
           if (currentStoreUser && currentStoreUser.id === firebaseUser.uid) {
             setLoading(false);
-            // Optionally, refresh push token on resume
             registerForPushNotificationsAsync(firebaseUser.uid);
+            // Background sync with Firestore ensures fresh role, status, and credits
+            fetchUserProfileWithStatus(firebaseUser.uid).then(res => {
+              if (res.status === 'success') {
+                setUser(res.profile);
+              }
+            }).catch(e => console.warn("Background profile sync note:", e));
             return;
           }
 
-          // Fetch robust profile from Firestore
-          const profile = await getCurrentUserProfile(firebaseUser.uid);
+          // Fetch profile with distinct error taxonomy (offline vs missing vs success)
+          const result = await fetchUserProfileWithStatus(firebaseUser.uid);
           
-          if (profile) {
-            setUser(profile);
-            registerForPushNotificationsAsync(profile.id);
+          if (result.status === 'success') {
+            setUser(result.profile);
+            registerForPushNotificationsAsync(result.profile.id);
+            setLoading(false);
+          } else if (result.status === 'genuinely_missing') {
+            // Affirmatively missing document -> trigger idempotent orphan recovery
+            try {
+              const recovered = await recoverOrphanProfile(firebaseUser);
+              setUser(recovered);
+              registerForPushNotificationsAsync(recovered.id);
+            } catch (recoveryErr) {
+              console.warn("Orphan profile recovery deferred/incomplete:", recoveryErr);
+            } finally {
+              setLoading(false);
+            }
           } else {
-            // Profile document not found yet (could be in middle of registration transaction)
-            // Register fn will sync the state
+            // Offline or network error: retain persisted user profile without false logout
+            console.warn("Profile fetch encountered offline/network error, retaining session.");
             setLoading(false);
           }
         } else {
@@ -84,7 +95,6 @@ export const RootNavigator = () => {
 
     return () => {
       unsubscribe();
-      clearTimeout(splashTimer);
     };
   }, []);
 
@@ -117,7 +127,7 @@ export const RootNavigator = () => {
     return () => unsubscribeProfile();
   }, [user?.id]);
 
-  if (isLoading || !isSplashMinTimeDone) {
+  if (isLoading) {
     return <SplashScreen />;
   }
 
@@ -131,13 +141,11 @@ export const RootNavigator = () => {
             <>
               {user.role === 'client' && <Stack.Screen name="ClientRoot" component={ClientNavigator} />}
               {user.role === 'lawyer' && (
-                user.status === 'verified' ? (
-                  <Stack.Screen name="LawyerRoot" component={LawyerNavigator} />
-                ) : (
-                  <Stack.Screen name="LawyerPending" component={PendingApprovalScreen} />
-                )
+                <Stack.Screen name="LawyerRoot" component={LawyerNavigator} />
               )}
-              {user.role === 'admin' && <Stack.Screen name="AdminRoot" component={AdminDashboard} />}
+              {(user.role === 'admin' || user.email === 'imujahidafridi@gmail.com') && (
+                <Stack.Screen name="AdminRoot" component={AdminDashboard} />
+              )}
               
               {/* Shared Screens accessible regardless of role */}
               <Stack.Screen name="SharedChat" component={ChatStack} />

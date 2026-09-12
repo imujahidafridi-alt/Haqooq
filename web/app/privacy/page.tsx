@@ -72,7 +72,7 @@ export default function PrivacyPolicyPage() {
           <div>
             <h2 className="text-xl font-semibold text-white mb-3">6. Your Rights and Data Deletion</h2>
             <p>
-              You have the right to access, update, or request the deletion of your account and associated personal data at any time. To request account deletion or data removal, please contact our support team at <span className="text-blue-400 font-medium">support@haqooq.pk</span> or use the in-app profile settings.
+              You have the right to access, update, or request the deletion of your account and associated personal data at any time. To request account deletion or data removal, please contact our support team at <span className="text-blue-400 font-medium">imujahidafridi@gmail.com</span> or use the in-app profile settings.
             </p>
           </div>
 
@@ -83,7 +83,8 @@ export default function PrivacyPolicyPage() {
             </p>
             <p className="mt-2 text-white font-medium">
               Haqooq Legal Technologies<br />
-              Email: <span className="text-blue-400">support@haqooq.pk</span><br />
+              Phone: <span className="text-blue-400">03139330041 (+92 313 9330041)</span><br />
+              Email: <span className="text-blue-400">imujahidafridi@gmail.com</span><br />
               Website: <span className="text-blue-400">https://haqooq.pk</span>
             </p>
           </div>

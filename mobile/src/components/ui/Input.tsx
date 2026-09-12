@@ -1,28 +1,44 @@
-import React from 'react';
+import React, { forwardRef, useRef, useImperativeHandle } from 'react';
 import { TextInput, StyleSheet, View, Text, TextInputProps } from 'react-native';
+import { useKeyboardAware } from './KeyboardAwareScrollView';
 
-interface InputProps extends TextInputProps {
+export interface InputProps extends TextInputProps {
   label?: string;
   error?: string;
 }
 
-export const Input: React.FC<InputProps> = ({ label, error, style, ...props }) => {
+export const Input = forwardRef<TextInput, InputProps>(({ label, error, style, onFocus, ...props }, ref) => {
+  const localInputRef = useRef<TextInput>(null);
+  useImperativeHandle(ref, () => localInputRef.current as TextInput);
+  const { scrollInputIntoView } = useKeyboardAware();
+
+  const handleFocus = (e: any) => {
+    scrollInputIntoView(localInputRef.current);
+    if (onFocus) {
+      onFocus(e);
+    }
+  };
+
   return (
     <View style={styles.container}>
       {label && <Text style={styles.label}>{label}</Text>}
       <TextInput
+        ref={localInputRef}
         style={[
           styles.input,
           error ? styles.inputError : null,
           style,
         ]}
         placeholderTextColor="#999"
+        onFocus={handleFocus}
         {...props}
       />
       {error && <Text style={styles.errorText}>{error}</Text>}
     </View>
   );
-};
+});
+
+Input.displayName = 'Input';
 
 const styles = StyleSheet.create({
   container: {

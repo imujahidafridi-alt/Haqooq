@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { View, StyleSheet, Text, Modal, Alert, Image, TouchableOpacity, TextInput, ScrollView, KeyboardAvoidingView, Platform } from 'react-native';
+import { View, StyleSheet, Text, Modal, Alert, Image, TouchableOpacity, TextInput, KeyboardAvoidingView, Platform } from 'react-native';
 import { Button } from '../../../components/ui/Button';
 import { useAuthStore } from '../../../store/authStore';
+import { KeyboardAwareScrollView, KeyboardAwareTextInput } from '../../../components/ui/KeyboardAwareScrollView';
 import * as ImagePicker from 'expo-image-picker';
 import * as Clipboard from 'expo-clipboard';
 import { getStorage, ref, uploadBytes, getDownloadURL } from 'firebase/storage';
@@ -182,7 +183,7 @@ export const EasypaisaCheckoutModal: React.FC<Props> = ({ isVisible, onClose, pl
       <View style={styles.overlay}>
         <KeyboardAvoidingView 
           style={styles.keyboardContainer}
-          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
         >
           <View style={styles.content}>
             <View style={styles.modalHeader}>
@@ -192,8 +193,10 @@ export const EasypaisaCheckoutModal: React.FC<Props> = ({ isVisible, onClose, pl
               </TouchableOpacity>
             </View>
 
-            <ScrollView 
+            <KeyboardAwareScrollView 
               showsVerticalScrollIndicator={false}
+              keyboardShouldPersistTaps="handled"
+              extraScrollHeight={45}
               contentContainerStyle={styles.scrollContent}
             >
               <View style={styles.receiptBox}>
@@ -231,7 +234,7 @@ export const EasypaisaCheckoutModal: React.FC<Props> = ({ isVisible, onClose, pl
 
               <View style={styles.inputContainer}>
                 <Text style={styles.inputLabel}>Sender Account Title</Text>
-                <TextInput
+                <KeyboardAwareTextInput
                   style={styles.input}
                   placeholder="e.g. John Doe"
                   value={senderTitle}
@@ -242,7 +245,7 @@ export const EasypaisaCheckoutModal: React.FC<Props> = ({ isVisible, onClose, pl
 
               <View style={styles.inputContainer}>
                 <Text style={styles.inputLabel}>Sender Easypaisa Number</Text>
-                <TextInput
+                <KeyboardAwareTextInput
                   style={styles.input}
                   placeholder="e.g. 03001234567"
                   keyboardType="phone-pad"
@@ -254,7 +257,7 @@ export const EasypaisaCheckoutModal: React.FC<Props> = ({ isVisible, onClose, pl
 
               <View style={styles.inputContainer}>
                 <Text style={styles.inputLabel}>Transaction ID / Reference Number</Text>
-                <TextInput
+                <KeyboardAwareTextInput
                   style={styles.input}
                   placeholder="e.g. 12345678901"
                   value={transactionId}
@@ -266,7 +269,7 @@ export const EasypaisaCheckoutModal: React.FC<Props> = ({ isVisible, onClose, pl
 
               <View style={styles.inputContainer}>
                 <Text style={styles.inputLabel}>Transaction Amount (PKR)</Text>
-                <TextInput
+                <KeyboardAwareTextInput
                   style={[styles.input, styles.disabledInput]}
                   value={transactionAmount}
                   onChangeText={setTransactionAmount}
@@ -283,7 +286,7 @@ export const EasypaisaCheckoutModal: React.FC<Props> = ({ isVisible, onClose, pl
                     <Text style={styles.timeHelperText}>Set to Now</Text>
                   </TouchableOpacity>
                 </View>
-                <TextInput
+                <KeyboardAwareTextInput
                   style={styles.input}
                   placeholder="YYYY-MM-DD HH:MM"
                   value={transactionDateTime}
@@ -325,7 +328,7 @@ export const EasypaisaCheckoutModal: React.FC<Props> = ({ isVisible, onClose, pl
                   style={styles.btn} 
                 />
               </View>
-            </ScrollView>
+            </KeyboardAwareScrollView>
           </View>
         </KeyboardAvoidingView>
       </View>

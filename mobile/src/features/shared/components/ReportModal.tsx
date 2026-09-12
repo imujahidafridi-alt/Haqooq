@@ -3,6 +3,7 @@ import { View, Text, StyleSheet, Modal, TouchableOpacity, KeyboardAvoidingView, 
 import { Ionicons } from '@expo/vector-icons';
 import { Input } from '../../../components/ui/Input';
 import { Button } from '../../../components/ui/Button';
+import { KeyboardAwareScrollView } from '../../../components/ui/KeyboardAwareScrollView';
 import { Colors } from '../../../utils/Colors';
 import { submitReport } from '../services/reportService';
 import { ReportEntityType, ReportCategory } from '../../../types/models';
@@ -65,41 +66,47 @@ export const ReportModal: React.FC<Props> = ({ visible, entityId, entityType, re
            <View style={{ flex: 1 }} />
         </TouchableWithoutFeedback>
 
-        <View style={styles.modalContent}>
-          <Text style={styles.modalTitle}>Report this {entityType}</Text>
-          {entityTitle && <Text style={styles.modalEntityContext}>For: {entityTitle}</Text>}
-          
-          <Text style={styles.modalSub}>Why are you reporting this?</Text>
+        <View style={[styles.modalContent, { maxHeight: '88%' }]}>
+          <KeyboardAwareScrollView
+            showsVerticalScrollIndicator={false}
+            keyboardShouldPersistTaps="handled"
+            extraScrollHeight={40}
+          >
+            <Text style={styles.modalTitle}>Report this {entityType}</Text>
+            {entityTitle && <Text style={styles.modalEntityContext}>For: {entityTitle}</Text>}
+            
+            <Text style={styles.modalSub}>Why are you reporting this?</Text>
 
-          <View style={styles.categoryContainer}>
-            {CATEGORIES.map((cat) => (
-              <TouchableOpacity 
-                key={cat.value} 
-                style={[styles.categoryOption, category === cat.value && styles.categoryOptionSelected]}
-                onPress={() => setCategory(cat.value)}
-              >
-                <Ionicons name={cat.icon} size={20} color={category === cat.value ? Colors.primary : Colors.textSecondary} />
-                <Text style={[styles.categoryText, category === cat.value && styles.categoryTextSelected]}>
-                  {cat.label}
-                </Text>
-              </TouchableOpacity>
-            ))}
-          </View>
+            <View style={styles.categoryContainer}>
+              {CATEGORIES.map((cat) => (
+                <TouchableOpacity 
+                  key={cat.value} 
+                  style={[styles.categoryOption, category === cat.value && styles.categoryOptionSelected]}
+                  onPress={() => setCategory(cat.value)}
+                >
+                  <Ionicons name={cat.icon} size={20} color={category === cat.value ? Colors.primary : Colors.textSecondary} />
+                  <Text style={[styles.categoryText, category === cat.value && styles.categoryTextSelected]}>
+                    {cat.label}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
 
-          <Input
-            label="Additional details (optional)"
-            placeholder="Please provide more context..."
-            value={reason}
-            onChangeText={setReason}
-            multiline
-            numberOfLines={3}
-            style={{ minHeight: 80, textAlignVertical: 'top' }}
-          />
+            <Input
+              label="Additional details (optional)"
+              placeholder="Please provide more context..."
+              value={reason}
+              onChangeText={setReason}
+              multiline
+              numberOfLines={3}
+              style={{ minHeight: 80, textAlignVertical: 'top' }}
+            />
 
-          <View style={styles.modalActions}>
-            <Button title="Cancel" variant="outline" onPress={handleCancel} style={{ flex: 1, marginRight: 8 }} />
-            <Button title="Submit Report" variant="primary" onPress={handleSubmit} isLoading={isSubmitting} style={{ flex: 1, marginLeft: 8, backgroundColor: Colors.error, borderColor: Colors.error }} />
-          </View>
+            <View style={styles.modalActions}>
+              <Button title="Cancel" variant="outline" onPress={handleCancel} style={{ flex: 1, marginRight: 8 }} />
+              <Button title="Submit Report" variant="primary" onPress={handleSubmit} isLoading={isSubmitting} style={{ flex: 1, marginLeft: 8, backgroundColor: Colors.error, borderColor: Colors.error }} />
+            </View>
+          </KeyboardAwareScrollView>
         </View>
       </KeyboardAvoidingView>
     </Modal>

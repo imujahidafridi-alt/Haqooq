@@ -23,7 +23,7 @@ var __importStar = (this && this.__importStar) || function (mod) {
     return result;
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.onReviewCreated = exports.submitProposal = exports.onCaseUpdate = exports.onCaseStateChangeAudit = exports.onUserUpdate = exports.classifyCaseAI = void 0;
+exports.deleteUserAccount = exports.reconcileAlgoliaIndex = exports.onReviewCreated = exports.submitProposal = exports.onCaseUpdate = exports.onCaseStateChangeAudit = exports.onUserUpdate = exports.classifyCaseAI = void 0;
 const functions = __importStar(require("firebase-functions"));
 const admin = __importStar(require("firebase-admin"));
 // Use named import for algoliasearch v5 compatibility
@@ -133,30 +133,43 @@ exports.onUserUpdate = functions.firestore.document('users/{userId}')
     .onWrite(async (change, context) => {
     const after = change.after.exists ? change.after.data() : null;
     const userId = context.params.userId;
-    // Delete scenario
-    if (!after) {
-        await client.deleteObject({ indexName: ALGOLIA_INDEX_NAME, objectID: userId }).catch(() => { });
+    // Delete or unverified scenario: purge immediately from search index
+    if (!after || after.role !== 'lawyer' || after.status !== 'verified') {
+        try {
+            await client.deleteObject({ indexName: ALGOLIA_INDEX_NAME, objectID: userId });
+            console.log(`[Algolia Purge] Evicted unverified/deleted advocate: ${userId}`);
+        }
+        catch (err) {
+            console.warn(`[Algolia Purge Error] Failed to delete ${userId} from index:`, err);
+        }
         return;
     }
-    // Only index verified lawyers
-    if (after.role === 'lawyer' && after.status === 'verified') {
-        const record = {
-            objectID: userId,
-            displayName: after.displayName,
-            specialization: after.specialization || [],
-            experienceYears: after.experienceYears || 0,
-            city: after.city || 'Unknown',
-            rating: after.rating || 0,
-            isPremium: after.isPremium || false,
-            email: after.email,
-            photoURL: after.photoURL || null
-        };
-        await client.saveObject({ indexName: ALGOLIA_INDEX_NAME, body: record }).catch(e => console.error(e));
-        console.log(`Indexed verified lawyer: ${userId}`);
+    // Only index verified lawyers with sanitized public attributes (Zero PII - no email, phone, or credentialUrl)
+    const rating = typeof after.rating === 'number' ? after.rating : 0;
+    const ratingCount = typeof after.ratingCount === 'number' ? after.ratingCount : 0;
+    const experienceYears = typeof after.experienceYears === 'number' ? after.experienceYears : 0;
+    const discoveryScore = Number(((rating * Math.log10(ratingCount + 2)) + (experienceYears * 0.1)).toFixed(2));
+    const record = {
+        objectID: userId,
+        id: userId,
+        displayName: after.displayName || 'Advocate',
+        displayNameNormalized: (after.displayName || '').toLowerCase().trim(),
+        specialization: after.specialization || [],
+        experienceYears,
+        city: after.city || 'Pakistan',
+        cityNormalized: (after.city || 'Pakistan').toLowerCase().trim(),
+        rating,
+        ratingCount,
+        discoveryScore,
+        isPremium: Boolean(after.isPremium),
+        photoURL: after.photoURL || null
+    };
+    try {
+        await client.saveObject({ indexName: ALGOLIA_INDEX_NAME, body: record });
+        console.log(`[Algolia Index] Indexed verified advocate: ${userId} (Score: ${discoveryScore})`);
     }
-    else {
-        // If they were downgraded or aren't a verified lawyer, purge from index
-        await client.deleteObject({ indexName: ALGOLIA_INDEX_NAME, objectID: userId }).catch(() => { });
+    catch (e) {
+        console.error(`[Algolia Error] Failed to index advocate ${userId}:`, e);
     }
 });
 /**
@@ -316,15 +329,117 @@ exports.onReviewCreated = functions.firestore.document('reviews/{reviewId}')
             const newCount = currentCount + 1;
             const newTotalScore = (currentRating * currentCount) + rating;
             const newAverage = Number((newTotalScore / newCount).toFixed(2));
+            const experienceYears = typeof lawyer.experienceYears === 'number' ? lawyer.experienceYears : 0;
+            const newDiscoveryScore = Number(((newAverage * Math.log10(newCount + 2)) + (experienceYears * 0.1)).toFixed(2));
             transaction.update(lawyerRef, {
                 rating: newAverage,
-                ratingCount: newCount
+                ratingCount: newCount,
+                discoveryScore: newDiscoveryScore
             });
         });
         console.log(`[Rating Update] Lawyer ${lawyerId} rated ${rating} stars. Score updated.`);
     }
     catch (error) {
         console.error(`[Rating Error] Failed to update rating for lawyer ${lawyerId}:`, error);
+    }
+});
+/**
+ * 7. Admin Reconciliation: Bulk Reindex Verified Advocates
+ * Traverses all verified lawyers in Firestore and synchronizes Algolia,
+ * repairing any drift caused by network glitches.
+ */
+exports.reconcileAlgoliaIndex = functions.https.onCall(async (data, context) => {
+    if (!context.auth) {
+        throw new functions.https.HttpsError('unauthenticated', 'Must be authenticated');
+    }
+    const db = admin.firestore();
+    const callerDoc = await db.collection('users').doc(context.auth.uid).get();
+    if (callerDoc.data()?.role !== 'admin') {
+        throw new functions.https.HttpsError('permission-denied', 'Admin role required');
+    }
+    const snap = await db.collection('users')
+        .where('role', '==', 'lawyer')
+        .where('status', '==', 'verified')
+        .get();
+    const records = snap.docs.map(doc => {
+        const d = doc.data();
+        const rating = typeof d.rating === 'number' ? d.rating : 0;
+        const ratingCount = typeof d.ratingCount === 'number' ? d.ratingCount : 0;
+        const experienceYears = typeof d.experienceYears === 'number' ? d.experienceYears : 0;
+        const discoveryScore = Number(((rating * Math.log10(ratingCount + 2)) + (experienceYears * 0.1)).toFixed(2));
+        return {
+            objectID: doc.id,
+            id: doc.id,
+            displayName: d.displayName || 'Advocate',
+            displayNameNormalized: (d.displayName || '').toLowerCase().trim(),
+            specialization: d.specialization || [],
+            experienceYears,
+            city: d.city || 'Pakistan',
+            cityNormalized: (d.city || 'Pakistan').toLowerCase().trim(),
+            rating,
+            ratingCount,
+            discoveryScore,
+            isPremium: Boolean(d.isPremium),
+            photoURL: d.photoURL || null
+        };
+    });
+    if (records.length > 0) {
+        await client.saveObjects({ indexName: ALGOLIA_INDEX_NAME, objects: records });
+    }
+    return { success: true, count: records.length };
+});
+/**
+ * 8. Server-Authoritative Account Deletion (Google Play Compliance)
+ * Idempotent multi-phase account deletion workflow:
+ * - Phase 1: Mark accountState = 'deletion_pending'
+ * - Phase 2: If lawyer, evict immediately from Algolia discovery index
+ * - Phase 3: Anonymize personal PII in Firestore (displayName: 'Deleted User', email/phone/photoURL nullified)
+ * - Phase 4: Delete Auth account via admin.auth().deleteUser(uid)
+ * - Phase 5: Finalize state accountState = 'deleted'
+ */
+exports.deleteUserAccount = functions.https.onCall(async (data, context) => {
+    if (!context.auth) {
+        throw new functions.https.HttpsError('unauthenticated', 'Must be authenticated to delete account.');
+    }
+    const uid = context.auth.uid;
+    const db = admin.firestore();
+    const userRef = db.collection('users').doc(uid);
+    try {
+        // Phase 1: Mark deletion pending
+        await userRef.set({
+            accountState: 'deletion_pending',
+            deletionRequestedAt: admin.firestore.FieldValue.serverTimestamp(),
+        }, { merge: true });
+        const userDoc = await userRef.get();
+        const userData = userDoc.data();
+        // Phase 2: Evict lawyer from Algolia
+        if (userData?.role === 'lawyer') {
+            try {
+                await client.deleteObject({ indexName: ALGOLIA_INDEX_NAME, objectID: uid });
+                console.log(`[Account Deletion] Evicted lawyer ${uid} from Algolia index.`);
+            }
+            catch (algoliaError) {
+                console.warn(`[Account Deletion] Algolia eviction note for ${uid}:`, algoliaError);
+            }
+        }
+        // Phase 3: Anonymize personal PII in Firestore while retaining record for case/ledger retention
+        await userRef.set({
+            displayName: 'Deleted User',
+            email: null,
+            phone: null,
+            photoURL: null,
+            status: 'suspended',
+            accountState: 'deleted',
+            deletedAt: admin.firestore.FieldValue.serverTimestamp(),
+        }, { merge: true });
+        // Phase 4: Delete Firebase Auth account
+        await admin.auth().deleteUser(uid);
+        console.log(`[Account Deletion] Successfully deleted Auth account for ${uid}.`);
+        return { success: true };
+    }
+    catch (error) {
+        console.error(`[Account Deletion Error] Failed for ${uid}:`, error);
+        throw new functions.https.HttpsError('internal', error?.message || 'Failed to complete account deletion.');
     }
 });
 //# sourceMappingURL=index.js.map

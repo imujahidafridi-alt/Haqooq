@@ -1,7 +1,8 @@
 import { collection, addDoc, updateDoc, doc, getDocs, query, where, writeBatch, serverTimestamp, arrayUnion } from 'firebase/firestore';
 import { httpsCallable } from 'firebase/functions';
-import { db, functions } from '../../../services/firebaseConfig';
-import { LegalCase, CaseProposal } from '../../../types/models';
+import { db, functions, auth } from '../../../services/firebaseConfig';
+import { LegalCase, CaseProposal, CourtLevel, UrgencyLevel, BudgetType } from '../../../types/models';
+import { postCaseInputSchema, PostCaseInput } from '../../../types/schemas';
 import { triggerPushNotification } from '../../../services/notificationService';
 
 /**
@@ -78,45 +79,89 @@ Note: Landlord/tenant disputes, rent issues, and evictions fall under "Property 
     return 'Civil Litigation'; // Safe fallback
   }
 };
+export interface CreateCaseParams {
+  title: string;
+  description: string;
+  category: string;
+  city: string;
+  jurisdictionCity: string;
+  courtLevel?: CourtLevel;
+  urgency?: UrgencyLevel;
+  budgetType?: BudgetType;
+  budgetAmount?: number;
+}
 
 /**
- * Submits a validated and categorized case to the Firestore 'cases' collection
+ * Submits a validated and categorized case to the Firestore 'cases' collection.
+ * Auth-derived identity prevents UID spoofing.
  */
 export const postCaseToMarketplace = async (
-  clientId: string,
-  clientName: string,
-  title: string,
-  description: string,
-  category: string,
-  budget?: number
+  params: CreateCaseParams
 ): Promise<string> => {
-  try {
-    const caseData: Omit<LegalCase, 'id'> = {
-      clientId,
-      clientName,
-      title,
-      description,
-      category,
-      budget,
-      status: 'open',
-      timeline: [
-        {
-          id: Date.now().toString(),
-          title: 'Case Posted',
-          date: Date.now(),
-          description: 'Case has been pushed to the marketplace for lawyer review.'
-        }
-      ],
-      createdAt: Date.now(),
-    };
+  const currentUser = auth.currentUser;
+  if (!currentUser) {
+    throw new Error('Authentication required. Please sign in to post a case.');
+  }
 
-      const docRef = await addDoc(collection(db, 'cases'), caseData);
-      return docRef.id;
-    } catch (error) {
-      console.error("Error posting case:", error);
-      throw new Error("Unable to post case. Please check your connection.");
-    }
+  // Strictly validate input against Zod schema
+  const validated = postCaseInputSchema.parse({
+    title: params.title.trim(),
+    description: params.description.trim(),
+    category: params.category,
+    city: params.city.trim(),
+    jurisdictionCity: params.jurisdictionCity.trim(),
+    courtLevel: params.courtLevel || 'district',
+    urgency: params.urgency || 'standard',
+    budgetType: params.budgetType || 'open_to_quotes',
+    budgetAmount: params.budgetType === 'fixed' ? params.budgetAmount : undefined,
+  });
+
+  // Calculate target response turnaround window
+  let targetResponseAt: number | undefined;
+  if (validated.urgency === 'urgent') {
+    targetResponseAt = Date.now() + 48 * 3600 * 1000; // 48 hours target turnaround
+  } else if (validated.urgency === 'standard') {
+    targetResponseAt = Date.now() + 7 * 24 * 3600 * 1000; // 7 days target turnaround
+  }
+
+  // Derive client display name from auth user
+  const clientName = currentUser.displayName || 'Client';
+
+  const caseData: Omit<LegalCase, 'id'> = {
+    clientId: currentUser.uid,
+    clientName,
+    title: validated.title,
+    description: validated.description,
+    category: validated.category,
+    city: validated.city,
+    jurisdictionCity: validated.jurisdictionCity,
+    courtLevel: validated.courtLevel,
+    urgency: validated.urgency,
+    targetResponseAt,
+    budgetType: validated.budgetType,
+    budgetAmount: validated.budgetAmount,
+    currency: 'PKR',
+    budget: validated.budgetAmount, // Deprecated write-through mirror for legacy components
+    status: 'open',
+    timeline: [
+      {
+        id: Date.now().toString(),
+        title: 'Matter Published',
+        date: Date.now(),
+        description: 'Your legal matter is published to verified advocates on the marketplace.'
+      }
+    ],
+    createdAt: Date.now(),
   };
+
+  try {
+    const docRef = await addDoc(collection(db, 'cases'), caseData);
+    return docRef.id;
+  } catch (error: any) {
+    console.error("Error posting case:", error);
+    throw new Error(error?.message || "Unable to post case. Please check your connection.");
+  }
+};
   
 /**
  * Fetches all proposals for a specific case

@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, Modal, TextInput, Alert, TouchableOpacity } from 'react-native';
+import { View, Text, StyleSheet, Modal, Alert, TouchableOpacity, KeyboardAvoidingView, Platform } from 'react-native';
 import { Colors } from '../../../utils/Colors';
 import { Typography } from '../../../utils/Typography';
 import { Button } from '../../../components/ui/Button';
+import { KeyboardAwareScrollView, KeyboardAwareTextInput } from '../../../components/ui/KeyboardAwareScrollView';
 import { submitLawyerRating } from '../services/ratingService';
 import { Ionicons } from '@expo/vector-icons';
 
@@ -57,37 +58,46 @@ export const RateLawyerModal: React.FC<Props> = ({ visible, caseId, lawyerId, cl
 
   return (
     <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
-      <View style={styles.overlay}>
-        <View style={styles.container}>
-          <Text style={[Typography.title, { marginBottom: 16, textAlign: 'center' }]}>Rate Your Lawyer</Text>
-          <Text style={[Typography.body, { marginBottom: 24, textAlign: 'center' }]}>
-            How would you rate the service provided by this lawyer?
-          </Text>
+      <KeyboardAvoidingView 
+        style={styles.overlay}
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+      >
+        <View style={[styles.container, { maxHeight: '88%' }]}>
+          <KeyboardAwareScrollView
+            showsVerticalScrollIndicator={false}
+            keyboardShouldPersistTaps="handled"
+            extraScrollHeight={35}
+          >
+            <Text style={[Typography.title, { marginBottom: 16, textAlign: 'center' }]}>Rate Your Lawyer</Text>
+            <Text style={[Typography.body, { marginBottom: 24, textAlign: 'center' }]}>
+              How would you rate the service provided by this lawyer?
+            </Text>
 
-          {renderStars()}
+            {renderStars()}
 
-          <TextInput
-            style={styles.input}
-            placeholder="Write a review (optional)"
-            placeholderTextColor={Colors.textSecondary}
-            value={reviewText}
-            onChangeText={setReviewText}
-            multiline
-            numberOfLines={4}
-          />
-
-          <View style={styles.buttons}>
-            <Button title="Cancel" variant="outline" onPress={onClose} style={{ flex: 1, marginRight: 8 }} />
-            <Button
-              title="Submit"
-              onPress={handleSubmit}
-              isLoading={loading}
-              disabled={loading}
-              style={{ flex: 1, marginLeft: 8 }}
+            <KeyboardAwareTextInput
+              style={styles.input}
+              placeholder="Write a review (optional)"
+              placeholderTextColor={Colors.textSecondary}
+              value={reviewText}
+              onChangeText={setReviewText}
+              multiline
+              numberOfLines={4}
             />
-          </View>
+
+            <View style={styles.buttons}>
+              <Button title="Cancel" variant="outline" onPress={onClose} style={{ flex: 1, marginRight: 8 }} />
+              <Button
+                title="Submit"
+                onPress={handleSubmit}
+                isLoading={loading}
+                disabled={loading}
+                style={{ flex: 1, marginLeft: 8 }}
+              />
+            </View>
+          </KeyboardAwareScrollView>
         </View>
-      </View>
+      </KeyboardAvoidingView>
     </Modal>
   );
 };

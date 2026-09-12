@@ -2,12 +2,15 @@ import React, { useEffect, useState } from 'react';
 import { View, StyleSheet, Text, FlatList, ActivityIndicator, Alert, Linking, SafeAreaView, ScrollView, TouchableOpacity } from 'react-native';
 import { Card } from '../../../components/ui/Card';
 import { Button } from '../../../components/ui/Button';
-import { getPendingLawyers, approveLawyer, getAdminStats } from '../services/adminService';
+import { useNavigation } from '@react-navigation/native';
+import { Ionicons } from '@expo/vector-icons';
+import { getPendingLawyers, approveLawyer, rejectLawyer, getAdminStats } from '../services/adminService';
 import { UserProfile } from '../../../types/models';
 import { useAuthStore } from '../../../store/authStore';
 import { logoutUser } from '../../auth/services/authService';
 
 export const AdminDashboard = () => {
+  const navigation = useNavigation<any>();
   const { logout } = useAuthStore();
   const [pendingLawyers, setPendingLawyers] = useState<UserProfile[]>([]);
   const [stats, setStats] = useState({ totalClients: 0, totalLawyers: 0, pendingVerifications: 0, totalCases: 0 });
@@ -45,12 +48,36 @@ export const AdminDashboard = () => {
   const handleApprove = async (id: string, name: string | null) => {
     try {
       await approveLawyer(id);
-      Alert.alert('Success', `${name || 'The lawyer'} has been verified.`);
+      Alert.alert('Advocate Verified', `${name || 'The lawyer'} has been officially verified and granted marketplace bidding privileges.`);
       setPendingLawyers(prev => prev.filter(l => l.id !== id));
       setStats(prev => ({ ...prev, pendingVerifications: Math.max(0, prev.pendingVerifications - 1), totalLawyers: prev.totalLawyers + 1 }));
     } catch (error: any) {
-      Alert.alert('Error', 'Approval failed in production mode. Check permissions.');
+      Alert.alert('Error', error?.message || 'Approval failed. Please verify admin permissions in Firestore.');
     }
+  };
+
+  const handleReject = (id: string, name: string | null) => {
+    Alert.alert(
+      'Reject Verification',
+      `Reject verification application for ${name || 'this advocate'}? They will be prompted to re-upload clear Bar credentials.`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Reject',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await rejectLawyer(id);
+              Alert.alert('Application Rejected', `${name || 'The advocate'} has been marked as rejected.`);
+              setPendingLawyers(prev => prev.filter(l => l.id !== id));
+              setStats(prev => ({ ...prev, pendingVerifications: Math.max(0, prev.pendingVerifications - 1) }));
+            } catch (error: any) {
+              Alert.alert('Error', error?.message || 'Rejection failed.');
+            }
+          }
+        }
+      ]
+    );
   };
 
   const handleLogout = async () => {
@@ -65,49 +92,70 @@ export const AdminDashboard = () => {
     </View>
   );
 
-  const renderItem = ({ item }: { item: UserProfile }) => (
-    <Card style={styles.card}>
-      <View style={styles.infoRow}>
-        <View style={styles.avatarCircle}>
-          <Text style={styles.avatarText}>{item.displayName?.charAt(0).toUpperCase() || 'U'}</Text>
+  const renderItem = ({ item }: { item: UserProfile }) => {
+    const hasDocs = Boolean(item.credentialUrl);
+    return (
+      <Card style={styles.card}>
+        <View style={styles.infoRow}>
+          <View style={styles.avatarCircle}>
+            <Text style={styles.avatarText}>{item.displayName?.charAt(0).toUpperCase() || 'U'}</Text>
+          </View>
+          <View style={{ flex: 1, marginLeft: 12 }}>
+            <Text style={styles.name}>{item.displayName || 'Advocate'}</Text>
+            <Text style={styles.email}>{item.email || 'No email'}</Text>
+            {item.city ? <Text style={styles.cityText}>📍 {item.city}</Text> : null}
+          </View>
+          <View style={[styles.badgeContainer, { backgroundColor: hasDocs ? '#ECFDF5' : '#FEF3C7', borderColor: hasDocs ? '#A7F3D0' : '#FDE68A', borderWidth: 1 }]}>
+            <Text style={[styles.badge, { color: hasDocs ? '#065F46' : '#92400E' }]}>
+              {hasDocs ? 'Docs Ready' : 'Awaiting Docs'}
+            </Text>
+          </View>
         </View>
-        <View style={{ flex: 1, marginLeft: 12 }}>
-          <Text style={styles.name}>{item.displayName || 'Unknown Name'}</Text>
-          <Text style={styles.email}>{item.email}</Text>
+
+        <View style={styles.actionRow}>
+          <Button
+            title={hasDocs ? "View License" : "No Docs"}
+            variant="outline"
+            onPress={() => {
+              if (item.credentialUrl) {
+                Linking.openURL(item.credentialUrl).catch(() => Alert.alert('Error', 'Failed to open document URL.'));
+              } else {
+                Alert.alert('No Documents', 'This advocate has not uploaded their Bar license or CNIC yet.');
+              }
+            }}
+            disabled={!hasDocs}
+            style={{ flex: 1, marginRight: 6, paddingVertical: 8 }}
+          />
+          <Button
+            title="Reject"
+            variant="outline"
+            onPress={() => handleReject(item.id, item.displayName)}
+            style={{ flex: 0.8, marginRight: 6, paddingVertical: 8, borderColor: '#EF4444' }}
+            textStyle={{ color: '#DC2626' }}
+          />
+          <Button
+            title="Approve"
+            onPress={() => handleApprove(item.id, item.displayName)}
+            style={{ flex: 1, paddingVertical: 8, backgroundColor: '#16A34A' }}
+          />
         </View>
-        <View style={styles.badgeContainer}>
-          <Text style={styles.badge}>Pending</Text>
-        </View>
-      </View>
-      <View style={styles.actionRow}>
-        <Button
-          title="Documents"
-          variant="outline"
-          onPress={() => {
-            if (item.credentialUrl) {
-              Linking.openURL(item.credentialUrl).catch(() => Alert.alert('Error', 'Failed to open URL'));
-            } else {
-              Alert.alert('No Docs', 'User has not uploaded documents yet.');
-            }
-          }}
-          disabled={!item.credentialUrl}
-          style={{ flex: 1, marginRight: 8, paddingVertical: 8 }}
-        />
-        <Button
-          title="Approve"
-          onPress={() => handleApprove(item.id, item.displayName)}
-          style={{ flex: 1, marginLeft: 8, paddingVertical: 8 }}
-        />
-      </View>
-    </Card>
-  );
+      </Card>
+    );
+  };
 
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.header}>
-        <View>
-          <Text style={styles.greeting}>Haqooq System</Text>
-          <Text style={styles.title}>Admin Portal</Text>
+        <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+          {navigation.canGoBack() && (
+            <TouchableOpacity onPress={() => navigation.goBack()} style={{ marginRight: 12, padding: 4 }}>
+              <Ionicons name="arrow-back" size={24} color="#0F172A" />
+            </TouchableOpacity>
+          )}
+          <View>
+            <Text style={styles.greeting}>Haqooq System</Text>
+            <Text style={styles.title}>Admin Portal</Text>
+          </View>
         </View>
         <TouchableOpacity onPress={handleLogout} style={styles.logoutBtn}>
           <Text style={styles.logoutText}>Logout</Text>
@@ -288,6 +336,12 @@ const styles = StyleSheet.create({
   email: {
     fontSize: 13,
     color: '#64748B',
+  },
+  cityText: {
+    fontSize: 12,
+    color: '#0F766E',
+    marginTop: 2,
+    fontWeight: '500',
   },
   badgeContainer: {
     backgroundColor: '#FEF3C7',

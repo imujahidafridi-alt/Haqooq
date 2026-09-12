@@ -30,6 +30,12 @@ export const handleAuthError = (error: any): string => {
         return 'Failed to initialize user database record. Please verify your connection and try again.';
       case 'auth/profile-not-found':
         return 'Your credentials are valid, but your profile record was not found. Please contact support.';
+      case 'auth/role-conflict':
+        return error.message || 'This account is already registered with a different role. Please log in with your existing account.';
+      case 'auth/registration-incomplete':
+        return 'Your registration could not be completed. Please register again to set up your profile.';
+      case 'auth/invalid-registration-intent':
+        return 'Registration intent verification failed. Please try signing up again.';
       default:
         // Print the code out so developer can see it
         return `An unexpected authentication error occurred (${error.code}). ${error.message || ''}`;

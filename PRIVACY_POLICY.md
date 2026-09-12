@@ -43,11 +43,12 @@ We implement industry-standard encryption, token-based authentication, and Fireb
 ---
 
 ## 6. Your Rights & Account/Data Deletion
-You have the right to access, update, or request the deletion of your account and associated personal data at any time. To request account deletion or data removal, please contact our support team at **support@haqooq.pk** or use the in-app profile settings.
+You have the right to access, update, or request the deletion of your account and associated personal data at any time. To request account deletion or data removal, please contact our support team at **imujahidafridi@gmail.com** or use the in-app profile settings.
 
 ---
 
 ## 7. Contact Us
 If you have any questions or concerns regarding this Privacy Policy, please contact us at:
-- **Email:** support@haqooq.pk
+- **Phone:** 03139330041 (+92 313 9330041)
+- **Email:** imujahidafridi@gmail.com
 - **Website:** https://haqooq.pk

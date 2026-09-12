@@ -224,6 +224,8 @@ export const LawyerCasesScreen: React.FC<Props> = ({ navigation }) => {
         data={cases}
         keyExtractor={item => item.id}
         renderItem={renderCase}
+        keyboardShouldPersistTaps="handled"
+        keyboardDismissMode="on-drag"
         contentContainerStyle={styles.listContainer}
         ListEmptyComponent={
           !loading ? (

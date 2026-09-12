@@ -11,6 +11,8 @@ import { UserRole } from '../../../types/models';
 import { GoogleSignin, statusCodes, isErrorWithCode } from '@react-native-google-signin/google-signin';
 import { Ionicons } from '@expo/vector-icons';
 import { handleAuthError } from '../../../utils/authErrorHandler';
+import { CITIES, CANONICAL_PRACTICE_AREAS } from '../../../constants/legalDomains';
+import { KeyboardAwareScrollView, KeyboardAwareTextInput } from '../../../components/ui/KeyboardAwareScrollView';
 
 export const RegisterScreen = ({ navigation }: any) => {
   const [email, setEmail] = useState('');
@@ -24,9 +26,6 @@ export const RegisterScreen = ({ navigation }: any) => {
   const [isGoogleLoading, setIsGoogleLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
-
-  const CITIES = ['Lahore', 'Karachi', 'Islamabad', 'Rawalpindi'];
-  const CATEGORIES = ['Family Law', 'Corporate Law', 'Criminal Law', 'Civil Litigation', 'Property / Real Estate Law'];
 
   const { setUser } = useAuthStore();
 
@@ -97,7 +96,7 @@ export const RegisterScreen = ({ navigation }: any) => {
           idToken, 
           role, 
           true,
-          role === 'lawyer' ? { city, specialization: [specialization] } : undefined
+          { city: city || undefined, specialization: role === 'lawyer' && specialization ? [specialization] : [] }
         );
         setUser(profile);
       } else {
@@ -132,8 +131,8 @@ export const RegisterScreen = ({ navigation }: any) => {
         password, 
         role, 
         displayName,
-        role === 'lawyer' ? city : undefined,
-        role === 'lawyer' ? [specialization] : undefined
+        city || undefined,
+        role === 'lawyer' && specialization ? [specialization] : undefined
       );
       setUser(profile);
     } catch (error: any) {
@@ -147,12 +146,14 @@ export const RegisterScreen = ({ navigation }: any) => {
 
   return (
     <SafeAreaView style={styles.safeArea}>
-      <KeyboardAvoidingView
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-        style={{ flex: 1 }}
+      <KeyboardAwareScrollView
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
+        extraScrollHeight={50}
       >
         <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
-          <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+          <View style={{ flex: 1 }}>
             {/* Header Section */}
             <View style={styles.headerContainer}>
               <Text style={styles.title}>Create Account</Text>
@@ -187,7 +188,7 @@ export const RegisterScreen = ({ navigation }: any) => {
             <View style={styles.formContainer}>
               <View style={[styles.inputContainer, isLoading && styles.inputDisabled]}>
                 <Ionicons name="person-circle-outline" size={20} color="#64748B" style={styles.inputIcon} />
-                <TextInput
+                <KeyboardAwareTextInput
                   style={styles.input}
                   placeholder="Full Name"
                   placeholderTextColor="#94A3B8"
@@ -200,7 +201,7 @@ export const RegisterScreen = ({ navigation }: any) => {
 
               <View style={[styles.inputContainer, isLoading && styles.inputDisabled]}>
                 <Ionicons name="mail-outline" size={20} color="#64748B" style={styles.inputIcon} />
-                <TextInput
+                <KeyboardAwareTextInput
                   style={styles.input}
                   placeholder="Email Address"
                   placeholderTextColor="#94A3B8"
@@ -215,7 +216,7 @@ export const RegisterScreen = ({ navigation }: any) => {
 
               <View style={[styles.inputContainer, isLoading && styles.inputDisabled]}>
                 <Ionicons name="lock-closed-outline" size={20} color="#64748B" style={styles.inputIcon} />
-                <TextInput
+                <KeyboardAwareTextInput
                   style={styles.input}
                   placeholder="Password"
                   placeholderTextColor="#94A3B8"
@@ -231,7 +232,7 @@ export const RegisterScreen = ({ navigation }: any) => {
 
               <View style={[styles.inputContainer, isLoading && styles.inputDisabled]}>
                 <Ionicons name="shield-checkmark-outline" size={20} color="#64748B" style={styles.inputIcon} />
-                <TextInput
+                <KeyboardAwareTextInput
                   style={styles.input}
                   placeholder="Confirm Password"
                   placeholderTextColor="#94A3B8"
@@ -245,32 +246,51 @@ export const RegisterScreen = ({ navigation }: any) => {
                 </TouchableOpacity>
               </View>
 
-              {role === 'lawyer' && (
+              {role === 'lawyer' ? (
                 <View style={styles.lawyerSetupContainer}>
-                  <Text style={styles.sectionTitle}>Lawyer Details</Text>
+                  <Text style={styles.sectionTitle}>Advocate Details</Text>
                   
-                  <Text style={styles.label}>Select City</Text>
+                  <Text style={styles.label}>Select Primary City</Text>
                   <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.chipScroll}>
                     {CITIES.map((c) => (
                       <TouchableOpacity
                         key={c}
                         style={[styles.chip, city === c && styles.chipActive]}
                         onPress={() => setCity(c)}
+                        activeOpacity={0.7}
                       >
                         <Text style={[styles.chipText, city === c && styles.chipTextActive]}>{c}</Text>
                       </TouchableOpacity>
                     ))}
                   </ScrollView>
 
-                  <Text style={styles.label}>Select Specialization</Text>
+                  <Text style={styles.label}>Select Practice Area</Text>
                   <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.chipScroll}>
-                    {CATEGORIES.map((cat) => (
+                    {CANONICAL_PRACTICE_AREAS.map((cat) => (
                       <TouchableOpacity
                         key={cat}
                         style={[styles.chip, specialization === cat && styles.chipActive]}
                         onPress={() => setSpecialization(cat)}
+                        activeOpacity={0.7}
                       >
                         <Text style={[styles.chipText, specialization === cat && styles.chipTextActive]}>{cat}</Text>
+                      </TouchableOpacity>
+                    ))}
+                  </ScrollView>
+                </View>
+              ) : (
+                <View style={styles.lawyerSetupContainer}>
+                  <Text style={styles.sectionTitle}>Your Location</Text>
+                  <Text style={styles.label}>Select City (Optional - Auto-fills case location)</Text>
+                  <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.chipScroll}>
+                    {CITIES.map((c) => (
+                      <TouchableOpacity
+                        key={c}
+                        style={[styles.chip, city === c && styles.chipActive]}
+                        onPress={() => setCity(city === c ? '' : c)}
+                        activeOpacity={0.7}
+                      >
+                        <Text style={[styles.chipText, city === c && styles.chipTextActive]}>{c}</Text>
                       </TouchableOpacity>
                     ))}
                   </ScrollView>
@@ -321,10 +341,9 @@ export const RegisterScreen = ({ navigation }: any) => {
                 <Text style={styles.footerLink}>Login Here</Text>
               </TouchableOpacity>
             </View>
-            
-          </ScrollView>
+          </View>
         </TouchableWithoutFeedback>
-      </KeyboardAvoidingView>
+      </KeyboardAwareScrollView>
     </SafeAreaView>
   );
 };

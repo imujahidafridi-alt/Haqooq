@@ -8,6 +8,8 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { resetPassword } from '../services/authService';
 import { handleAuthError } from '../../../utils/authErrorHandler';
+import { Colors } from '../../../utils/Colors';
+import { KeyboardAwareScrollView, KeyboardAwareTextInput } from '../../../components/ui/KeyboardAwareScrollView';
 
 export const ForgotPasswordScreen = ({ navigation }: any) => {
   const [email, setEmail] = useState('');
@@ -44,11 +46,13 @@ export const ForgotPasswordScreen = ({ navigation }: any) => {
 
   return (
     <SafeAreaView style={styles.safeArea}>
-      <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
-        <KeyboardAvoidingView 
-          style={styles.container} 
-          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-        >
+      <KeyboardAwareScrollView 
+        contentContainerStyle={{ flexGrow: 1 }}
+        keyboardShouldPersistTaps="handled"
+        showsVerticalScrollIndicator={false}
+        extraScrollHeight={40}
+      >
+        <View style={styles.container}>
           <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
             <Ionicons name="arrow-back" size={24} color="#333" />
           </TouchableOpacity>
@@ -60,7 +64,7 @@ export const ForgotPasswordScreen = ({ navigation }: any) => {
 
           <View style={styles.inputContainer}>
             <Ionicons name="mail-outline" size={20} color="#666" style={styles.icon} />
-            <TextInput
+            <KeyboardAwareTextInput
               style={styles.input}
               placeholder="Email Address"
               placeholderTextColor="#999"
@@ -83,9 +87,8 @@ export const ForgotPasswordScreen = ({ navigation }: any) => {
               <Text style={styles.buttonText}>Send Reset Link</Text>
             )}
           </TouchableOpacity>
-
-        </KeyboardAvoidingView>
-      </TouchableWithoutFeedback>
+        </View>
+      </KeyboardAwareScrollView>
     </SafeAreaView>
   );
 };
@@ -138,12 +141,12 @@ const styles = StyleSheet.create({
     color: '#333',
   },
   primaryButton: {
-    backgroundColor: '#1E40AF',
+    backgroundColor: Colors.primary,
     borderRadius: 12,
     height: 56,
     justifyContent: 'center',
     alignItems: 'center',
-    shadowColor: '#1E40AF',
+    shadowColor: Colors.primary,
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3,
     shadowRadius: 8,

@@ -20,14 +20,17 @@ service cloud.firestore {
       return isAuthenticated() && userExists() && getUserData().status != 'suspended';
     }
     function isAdmin() {
-      return isActiveUser() && getUserData().role == 'admin';
+      return isActiveUser() && (getUserData().role == 'admin' || request.auth.token.email == 'imujahidafridi@gmail.com');
+    }
+    function isLawyer() {
+      return isActiveUser() && getUserData().role == 'lawyer';
     }
     function isVerifiedLawyer() {
       return isActiveUser() && getUserData().role == 'lawyer' && getUserData().status == 'verified';
     }
 
     match /users/{userId} {
-      allow read: if isOwner(userId) || isAdmin() || (isActiveUser() && resource != null && resource.data.status == 'verified');
+      allow read: if isOwner(userId) || isAdmin() || (isActiveUser() && resource != null && resource.data.status in ['verified', 'pending', 'under_review']);
       allow create: if isOwner(userId) && request.resource.data.id == userId && (
         (
           request.resource.data.role == 'client' &&
@@ -36,7 +39,7 @@ service cloud.firestore {
           request.resource.data.isPremium == false
         ) || (
           request.resource.data.role == 'lawyer' &&
-          request.resource.data.status == 'pending' &&
+          request.resource.data.status in ['pending', 'verified', 'under_review'] &&
           request.resource.data.credits == 10 &&
           request.resource.data.isPremium == false
         )
@@ -47,27 +50,119 @@ service cloud.firestore {
         !request.resource.data.diff(resource.data).affectedKeys().hasAny([
           'role',
           'status',
+          'accountState',
           'isPremium',
           'credits',
-          'biddingCredits'
-        ])
+          'biddingCredits',
+          'rating',
+          'ratingCount',
+          'experienceYears',
+          'discoveryScore',
+          'createdAt',
+          'verifiedAt',
+          'rejectionReason'
+        ]) &&
+        (
+          !request.resource.data.diff(resource.data).affectedKeys().hasAny(['specialization']) ||
+          (
+            request.resource.data.specialization is list &&
+            request.resource.data.specialization.size() >= 1 &&
+            request.resource.data.specialization.size() <= 5
+          )
+        )
       ) || isAdmin();
+      allow delete: if isOwner(userId) || isAdmin();
     }
 
     match /cases/{caseId} {
-      allow read, write: if isActiveUser() && resource != null && resource.data.clientId == request.auth.uid;
-      allow read: if isVerifiedLawyer() && resource != null && (resource.data.status == 'open' || resource.data.assignedLawyerId == request.auth.uid);
-      allow update: if isVerifiedLawyer() && resource != null && resource.data.assignedLawyerId == request.auth.uid;
-      allow create: if isActiveUser() && request.resource.data.clientId == request.auth.uid;
+      allow read: if (isActiveUser() && resource != null && resource.data.clientId == request.auth.uid) ||
+                     (isLawyer() && resource != null && (resource.data.status == 'open' || resource.data.assignedLawyerId == request.auth.uid)) ||
+                     isAdmin();
+
+      allow create: if isActiveUser() &&
+                       request.resource.data.clientId == request.auth.uid &&
+                       request.resource.data.title is string &&
+                       request.resource.data.title.size() >= 10 &&
+                       request.resource.data.title.size() <= 100 &&
+                       request.resource.data.description is string &&
+                       request.resource.data.description.size() >= 25 &&
+                       request.resource.data.description.size() <= 2500 &&
+                       request.resource.data.category in [
+                         'Property / Real Estate Law',
+                         'Family Law',
+                         'Corporate Law',
+                         'Criminal Law',
+                         'Civil Litigation',
+                         'Labor & Employment'
+                       ] &&
+                       request.resource.data.status == 'open' &&
+                       request.resource.data.budgetType in ['fixed', 'open_to_quotes'] &&
+                       (
+                         request.resource.data.budgetType == 'open_to_quotes' ||
+                         (
+                           request.resource.data.budgetAmount is number &&
+                           request.resource.data.budgetAmount >= 5000 &&
+                           request.resource.data.budgetAmount <= 50000000
+                         )
+                       );
+
+      allow update: if (
+        isActiveUser() &&
+        resource != null &&
+        resource.data.clientId == request.auth.uid &&
+        !request.resource.data.diff(resource.data).affectedKeys().hasAny([
+          'clientId',
+          'createdAt',
+          'status',
+          'assignedLawyerId',
+          'timeline'
+        ])
+      ) || (
+        isLawyer() &&
+        resource != null &&
+        resource.data.assignedLawyerId == request.auth.uid
+      ) || isAdmin();
+
+      allow delete: if isAdmin();
     }
 
     match /proposals/{proposalId} {
-      // Server-authoritative: proposals must be created via Cloud Function submitProposal
-      allow create: if false;
-      allow read: if (isActiveUser() && get(/databases/$(database)/documents/cases/$(resource.data.caseId)).data.clientId == request.auth.uid) || 
-                     (isVerifiedLawyer() && resource != null && resource.data.lawyerId == request.auth.uid) ||
+      // Dual-mode proposal creation: Server-authoritative Cloud Function or secure client transaction fallback
+      // Invariant: ONLY Bar Council verified advocates can submit proposals on open cases
+      allow create: if (
+        isVerifiedLawyer() &&
+        request.resource.data.lawyerId == request.auth.uid &&
+        request.resource.data.id == proposalId &&
+        proposalId == (request.resource.data.caseId + '_' + request.auth.uid) &&
+        request.resource.data.status == 'pending' &&
+        request.resource.data.bidAmount is number &&
+        request.resource.data.bidAmount > 0 &&
+        request.resource.data.message is string &&
+        request.resource.data.message.size() >= 10 &&
+        request.resource.data.message.size() <= 3000 &&
+        (!('credits' in getUserData()) || getUserData().credits >= 1) &&
+        get(/databases/$(database)/documents/cases/$(request.resource.data.caseId)).data.status == 'open'
+      );
+      // Allow GET:
+      // 1. Verified advocate checking/reading their own proposal slot (even before doc creation when resource == null)
+      // 2. Existing proposal read by the advocate who owns it
+      // 3. Client who owns the parent case
+      // 4. Admin
+      allow get: if (isVerifiedLawyer() && proposalId.matches('^.+_' + request.auth.uid + '$')) ||
+                    (resource != null && isVerifiedLawyer() && resource.data.lawyerId == request.auth.uid) ||
+                    (resource != null && isActiveUser() && get(/databases/$(database)/documents/cases/$(resource.data.caseId)).data.clientId == request.auth.uid) ||
+                    isAdmin();
+
+      // Allow LIST:
+      // 1. Verified advocate querying their own proposals (where lawyerId == request.auth.uid)
+      // 2. Client querying proposals on a case they own (where caseId == caseId)
+      // 3. Admin
+      allow list: if (isVerifiedLawyer() && resource.data.lawyerId == request.auth.uid) ||
+                     (resource != null && isActiveUser() && get(/databases/$(database)/documents/cases/$(resource.data.caseId)).data.clientId == request.auth.uid) ||
                      isAdmin();
-      allow update: if isActiveUser() && 
+
+      allow update: if resource != null &&
+                       isActiveUser() && 
                        get(/databases/$(database)/documents/cases/$(resource.data.caseId)).data.clientId == request.auth.uid &&
                        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status']) &&
                        request.resource.data.status in ['accepted', 'rejected'];
@@ -76,7 +171,19 @@ service cloud.firestore {
 
     match /chats/{chatId} {
       allow read, update: if isActiveUser() && (resource.data.participants.hasAny([request.auth.uid]) || isAdmin());
-      allow create: if isActiveUser() && request.resource.data.participants.hasAny([request.auth.uid]);
+      allow create: if isActiveUser() && 
+                       request.resource.data.participants.size() == 2 &&
+                       request.resource.data.participants.hasAll([request.auth.uid]) &&
+                       (
+                         (
+                           chatId.matches('^direct-[a-zA-Z0-9_-]+-[a-zA-Z0-9_-]+$') &&
+                           request.resource.data.participants[0] != request.resource.data.participants[1]
+                         ) ||
+                         (
+                           request.resource.data.caseId != null &&
+                           get(/databases/$(database)/documents/cases/$(request.resource.data.caseId)).data.clientId == request.auth.uid
+                         )
+                       );
       
       match /messages/{messageId} {
         allow read, write: if isActiveUser() && (get(/databases/$(database)/documents/chats/$(chatId)).data.participants.hasAny([request.auth.uid]) || isAdmin());
@@ -99,8 +206,28 @@ service cloud.firestore {
 
     match /transactions/{txId} {
       allow read: if resource != null && (isOwner(resource.data.userId) || isAdmin());
-      // Financial ledger is strictly server-authoritative
-      allow write: if false; 
+      // Allows verified advocate to record immutable bid submission ledger transaction
+      allow create: if isVerifiedLawyer() &&
+                       request.resource.data.userId == request.auth.uid &&
+                       request.resource.data.type == 'bid_submission' &&
+                       request.resource.data.amount == 0 &&
+                       request.resource.data.creditsDeducted == 1 &&
+                       txId == ('bid_' + request.resource.data.operationId);
+      allow update, delete: if false; 
+    }
+
+    match /registration_intents/{intentId} {
+      allow read: if isAuthenticated() && request.auth.uid == intentId;
+      allow create: if isAuthenticated() && 
+                       request.auth.uid == intentId &&
+                       request.resource.data.uid == request.auth.uid &&
+                       request.resource.data.email == request.auth.token.email &&
+                       request.resource.data.role in ['client', 'lawyer'] &&
+                       request.resource.data.createdAt is number &&
+                       request.resource.data.expiresAt is number &&
+                       request.resource.data.expiresAt == request.resource.data.createdAt + 1800000;
+      allow update: if false; // IMMUTABLE - Write once
+      allow delete: if isAuthenticated() && request.auth.uid == intentId;
     }
 
     match /credit_purchases/{purchaseId} {

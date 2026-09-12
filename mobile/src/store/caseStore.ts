@@ -1,22 +1,6 @@
 import { create } from 'zustand';
 
-export interface LegalCase {
-  id: string;
-  clientId: string;
-  title: string;
-  description: string;
-  category: string;
-  budget?: string;
-  status: 'open' | 'active' | 'closed';
-  timeline: TimelineEvent[];
-}
-
-export interface TimelineEvent {
-  id: string;
-  title: string;
-  date: string;
-  description?: string;
-}
+import { LegalCase } from '../types/models';
 
 interface CaseState {
   activeCases: LegalCase[];
