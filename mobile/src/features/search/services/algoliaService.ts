@@ -28,8 +28,8 @@ export const executeAlgoliaSearch = async (rawFilters: SearchFilters): Promise<L
     let results: LawyerProfile[] = [];
 
     snapshot.forEach((doc) => {
-      // Validate schema via Zod to gracefully handle malformed data
-      const parsed = lawyerProfileSchema.safeParse(doc.data());
+      // Validate schema via Zod to gracefully handle malformed data, including doc.id
+      const parsed = lawyerProfileSchema.safeParse({ id: doc.id, ...doc.data() });
       if (parsed.success) {
         results.push(parsed.data as LawyerProfile);
       } else {

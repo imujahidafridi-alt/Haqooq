@@ -15,6 +15,10 @@ export const PendingApprovalScreen = () => {
   const [isUploading, setIsUploading] = useState(false);
   const [hasUploaded, setHasUploaded] = useState(false);
 
+  const isSuspended = user?.status === 'suspended';
+  const isRejected = user?.status === 'rejected';
+  const isUnderReview = user?.status === 'under_review' || (user?.credentialUrl && !isRejected && !isSuspended) || hasUploaded;
+
   const handleUploadCredential = async () => {
     try {
       const result = await DocumentPicker.getDocumentAsync({
@@ -26,18 +30,21 @@ export const PendingApprovalScreen = () => {
       if (!user) return;
 
       setIsUploading(true);
-      const fileUri = result.assets[0].uri;
+      const asset = result.assets[0];
+      const fileUri = asset.uri;
+      const mimeType = asset.mimeType || 'application/pdf';
+      const extension = mimeType.includes('pdf') ? 'pdf' : 'jpg';
       
       // Convert URI to Blob
       const response = await fetch(fileUri);
       const blob = await response.blob();
       
-      // Upload to Firebase Storage
-      const storageRef = ref(storage, `credentials/${user.id}_${Date.now()}`);
-      await uploadBytes(storageRef, blob);
+      // Upload to Firebase Storage conforming to storage.rules: /credentials/{userId}/{filename}
+      const storageRef = ref(storage, `credentials/${user.id}/${Date.now()}_credential.${extension}`);
+      await uploadBytes(storageRef, blob, { contentType: mimeType });
       const downloadURL = await getDownloadURL(storageRef);
 
-      // Update User Document
+      // Update User Document with credentialUrl (status remains pending/under_review for admin verification)
       const userRef = doc(db, 'users', user.id);
       await updateDoc(userRef, {
         credentialUrl: downloadURL
@@ -45,50 +52,104 @@ export const PendingApprovalScreen = () => {
 
       setIsUploading(false);
       setHasUploaded(true);
-      Alert.alert('Success', 'Your credentials have been securely uploaded to Firebase Storage and are awaiting Admin review.');
-    } catch (error) {
-      console.error(error);
+      Alert.alert(
+        'Credentials Submitted',
+        'Your credentials have been securely uploaded and are now under review by our legal compliance team.'
+      );
+    } catch (error: any) {
+      console.error('Credential upload error:', error);
       setIsUploading(false);
-      Alert.alert('Upload Error', 'Failed to upload document.');
+      Alert.alert('Upload Error', error?.message || 'Failed to upload document.');
     }
   };
 
   const handleLogout = async () => {
-    await logoutUser();
+    try {
+      await logoutUser();
+    } catch (e) {
+      console.warn('Logout error:', e);
+    }
     logout();
   };
 
   return (
     <SafeAreaView style={styles.container}>
       <Card style={styles.card}>
-        <Text style={styles.title}>Welcome, {user?.displayName}!</Text>
-        <Text style={styles.subtitle}>
-          To unlock the lawyer marketplace, we need to verify your identity and legal credentials.
-        </Text>
+        <Text style={styles.title}>Welcome, {user?.displayName || (user?.role === 'lawyer' ? 'Counselor' : 'Member')}!</Text>
 
-        <View style={styles.statusBox}>
-          <Text style={styles.statusText}>
-            Status: <Text style={styles.pendingTag}>WAITING FOR DOCUMENTS</Text>
-          </Text>
-        </View>
-
-        {!hasUploaded ? (
-          <Button 
-            title="Upload Credentials (PDF/Image)" 
-            onPress={handleUploadCredential}
-            isLoading={isUploading}
-          />
+        {isSuspended ? (
+          <>
+            <View style={[styles.statusBox, { backgroundColor: '#FEF2F2', borderColor: Colors.error }]}>
+              <Text style={[styles.statusText, { color: Colors.error }]}>
+                Status: <Text style={{ fontWeight: 'bold' }}>ACCOUNT SUSPENDED</Text>
+              </Text>
+            </View>
+            <Text style={styles.subtitle}>
+              Your account has been temporarily suspended by administrative review. If you believe this is an error, please contact Haqooq support.
+            </Text>
+          </>
+        ) : isRejected ? (
+          <>
+            <View style={[styles.statusBox, { backgroundColor: '#FEF2F2', borderColor: Colors.error }]}>
+              <Text style={[styles.statusText, { color: Colors.error }]}>
+                Status: <Text style={{ fontWeight: 'bold' }}>APPLICATION REJECTED</Text>
+              </Text>
+            </View>
+            <Text style={styles.subtitle}>
+              Your submitted credentials could not be verified. Please re-upload a clear copy of your Bar Council License or valid High Court Certificate.
+            </Text>
+            <Button 
+              title="Upload New Credentials (PDF/Image)" 
+              onPress={handleUploadCredential}
+              isLoading={isUploading}
+              style={{ width: '100%', marginTop: 12 }}
+            />
+          </>
+        ) : isUnderReview ? (
+          <>
+            <View style={[styles.statusBox, { backgroundColor: '#F0FDF4', borderColor: Colors.success }]}>
+              <Text style={[styles.statusText, { color: Colors.success }]}>
+                Status: <Text style={{ fontWeight: 'bold' }}>UNDER COMPLIANCE REVIEW</Text>
+              </Text>
+            </View>
+            <Text style={styles.successText}>
+              ✅ Your verification documents have been received and are being audited by Haqooq Legal Compliance.
+            </Text>
+            <Text style={styles.subtitle}>
+              Once approved, your marketplace access will unlock automatically. No further action is required.
+            </Text>
+            <Button 
+              title="Update Credentials" 
+              variant="outline"
+              onPress={handleUploadCredential}
+              isLoading={isUploading}
+              style={{ width: '100%', marginTop: 12 }}
+            />
+          </>
         ) : (
-          <Text style={styles.successText}>
-            ✅ Documents received. Our admin team will review your account shortly. Please check back later.
-          </Text>
+          <>
+            <View style={styles.statusBox}>
+              <Text style={styles.statusText}>
+                Status: <Text style={styles.pendingTag}>WAITING FOR CREDENTIALS</Text>
+              </Text>
+            </View>
+            <Text style={styles.subtitle}>
+              To bid on cases and interact with clients on Haqooq, Pakistan law requires verification of your Bar Council license.
+            </Text>
+            <Button 
+              title="Upload Bar License / CNIC (PDF/Image)" 
+              onPress={handleUploadCredential}
+              isLoading={isUploading}
+              style={{ width: '100%', marginTop: 12 }}
+            />
+          </>
         )}
 
         <Button 
           title="Sign Out" 
           variant="outline" 
           onPress={handleLogout}
-          style={{ marginTop: 20 }}
+          style={{ marginTop: 24, width: '100%' }}
         />
       </Card>
     </SafeAreaView>

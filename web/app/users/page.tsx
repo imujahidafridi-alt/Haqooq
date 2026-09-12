@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from 'react';
+import { useMemo, useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { PageShell } from '@/components/layout/PageShell';
 import { apiFetch } from '@/lib/api';
@@ -17,6 +17,17 @@ export default function UsersPage() {
   const [selectedUser, setSelectedUser] = useState<UserProfile | null>(null);
   const [actionReason, setActionReason] = useState('');
   const [showReasonInput, setShowReasonInput] = useState<'reject' | 'suspend' | null>(null);
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && selectedUser) {
+        setSelectedUser(null);
+        setShowReasonInput(null);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [selectedUser]);
 
   const { data: users = [], isLoading } = useQuery<UserProfile[]>({
     queryKey: ['users'],
@@ -141,8 +152,22 @@ export default function UsersPage() {
 
       {/* User Details Modal */}
       {selectedUser && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm">
-          <div className="w-full max-w-2xl rounded-3xl border border-slate-800 bg-slate-900 p-6 text-left shadow-2xl overflow-y-auto max-h-[90vh]">
+        <div 
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm"
+          role="dialog"
+          aria-modal="true"
+          aria-label="Governance Review User Details"
+        >
+          {/* Backdrop click dismissal */}
+          <div 
+            className="fixed inset-0" 
+            onClick={() => {
+              setSelectedUser(null);
+              setShowReasonInput(null);
+            }} 
+            aria-hidden="true" 
+          />
+          <div className="relative w-full max-w-2xl rounded-3xl border border-slate-800 bg-slate-900 p-6 text-left shadow-2xl overflow-y-auto max-h-[90vh]">
             <div className="flex items-center justify-between border-b border-slate-800 pb-4 mb-5">
               <div>
                 <h3 className="text-xl font-bold text-white flex items-center gap-2">
@@ -152,8 +177,12 @@ export default function UsersPage() {
                 <p className="text-xs text-slate-400 mt-1">UID: {selectedUser.id}</p>
               </div>
               <button
-                onClick={() => setSelectedUser(null)}
-                className="rounded-xl p-2 text-slate-400 hover:bg-slate-800 hover:text-white"
+                onClick={() => {
+                  setSelectedUser(null);
+                  setShowReasonInput(null);
+                }}
+                aria-label="Close user review modal"
+                className="rounded-xl p-2 text-slate-400 hover:bg-slate-800 hover:text-white focus:outline-none focus:ring-2 focus:ring-brand-500"
               >
                 <X className="h-6 w-6" />
               </button>

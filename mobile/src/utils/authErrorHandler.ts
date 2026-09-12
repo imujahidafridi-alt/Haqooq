@@ -22,8 +22,14 @@ export const handleAuthError = (error: any): string => {
         return 'This authentication operation is not enabled on the server.';
       case 'auth/credential-already-in-use':
         return 'This Google account is already linked to another user.';
+      case 'auth/account-exists-with-different-credential':
+        return 'An account already exists with this email address using password sign-in. Please enter your email and password below to log in or link your account.';
       case 'auth/unregistered-google-account':
         return 'It looks like you don’t have an account with us yet. Please sign up first.';
+      case 'auth/profile-creation-failed':
+        return 'Failed to initialize user database record. Please verify your connection and try again.';
+      case 'auth/profile-not-found':
+        return 'Your credentials are valid, but your profile record was not found. Please contact support.';
       default:
         // Print the code out so developer can see it
         return `An unexpected authentication error occurred (${error.code}). ${error.message || ''}`;

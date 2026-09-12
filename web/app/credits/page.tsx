@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from 'react';
+import { useMemo, useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { PageShell } from '@/components/layout/PageShell';
 import { apiFetch } from '@/lib/api';
@@ -20,6 +20,16 @@ export default function CreditsPage() {
   const [rejectionReason, setRejectionReason] = useState('');
   const [activeTab, setActiveTab] = useState<'requests' | 'audit_logs'>('requests');
   const [copiedId, setCopiedId] = useState<string | null>(null);
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && selectedRequest) {
+        setSelectedRequest(null);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [selectedRequest]);
 
   // Fetch credit requests
   const { data: requests = [], isLoading: isLoadingRequests } = useQuery<any[]>({
@@ -322,8 +332,11 @@ export default function CreditsPage() {
           className={`fixed inset-0 z-50 overflow-hidden transition-opacity duration-300 ${
             selectedRequest ? 'pointer-events-auto opacity-100' : 'pointer-events-none opacity-0'
           }`}
+          role="dialog"
+          aria-modal="true"
+          aria-label="Verify Credit Purchase Request"
         >
-          <div onClick={() => setSelectedRequest(null)} className="absolute inset-0 bg-slate-950/60 backdrop-blur-sm" />
+          <div onClick={() => setSelectedRequest(null)} className="absolute inset-0 bg-slate-950/60 backdrop-blur-sm" aria-hidden="true" />
 
           <div className="absolute inset-y-0 right-0 pl-10 max-w-full flex">
             <div
@@ -345,7 +358,8 @@ export default function CreditsPage() {
                       </div>
                       <button
                         onClick={() => setSelectedRequest(null)}
-                        className="rounded-xl p-2 text-slate-400 hover:bg-slate-800 hover:text-white"
+                        aria-label="Close review dialog"
+                        className="rounded-xl p-2 text-slate-400 hover:bg-slate-800 hover:text-white focus:outline-none focus:ring-2 focus:ring-brand-500"
                       >
                         <XCircle className="h-6 w-6" />
                       </button>

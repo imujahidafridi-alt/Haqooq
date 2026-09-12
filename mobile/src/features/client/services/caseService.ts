@@ -178,14 +178,16 @@ export const acceptProposal = async (proposalId: string, caseId: string, lawyerI
       timeline: arrayUnion(timelineUpdate)
     });
 
-    // 4. Create Chat Thread
-    const threadRef = doc(collection(db, 'chats')); // Generate new ID
+    // 4. Create Chat Thread using deterministic case ID so both client and lawyer can resolve it instantly
+    const threadRef = doc(db, 'chats', caseId);
     batch.set(threadRef, {
+      id: caseId,
       caseId,
       participants: [clientId, lawyerId],
       lastMessage: 'Chat started. You can now discuss the case.',
-      updatedAt: Date.now()
-    });
+      updatedAt: serverTimestamp(),
+      createdAt: serverTimestamp()
+    }, { merge: true });
 
     // [ENTERPRISE PATTERN]: 5. Create immutable Immutable Audit Log
     // Temporarily disabled to prevent "Missing or insufficient permissions" error

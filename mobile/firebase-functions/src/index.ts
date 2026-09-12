@@ -210,3 +210,133 @@ export const onCaseUpdate = functions.firestore.document('cases/{caseId}')
     }
   });
 
+/**
+ * 5. Server-Authoritative Proposal Submission & Credit Deduction
+ * Invariant: 1 proposal creation <=> 1 credit deduction <=> 1 ledger transaction.
+ * Deterministic proposal ID: {caseId}_{lawyerId} enforces unique proposal per lawyer per case.
+ */
+export const submitProposal = functions.https.onCall(async (data: { caseId: string; bidAmount: number; message: string }, context) => {
+  if (!context.auth) {
+    throw new functions.https.HttpsError('unauthenticated', 'Must be authenticated to submit a proposal.');
+  }
+
+  const lawyerId = context.auth.uid;
+  const { caseId, bidAmount, message } = data;
+
+  if (!caseId || typeof bidAmount !== 'number' || bidAmount <= 0 || !message?.trim()) {
+    throw new functions.https.HttpsError('invalid-argument', 'Valid case ID, positive bid amount, and proposal message are required.');
+  }
+
+  const db = admin.firestore();
+
+  return await db.runTransaction(async (transaction) => {
+    // 1. Verify lawyer profile and status
+    const lawyerRef = db.collection('users').doc(lawyerId);
+    const lawyerSnap = await transaction.get(lawyerRef);
+    if (!lawyerSnap.exists) {
+      throw new functions.https.HttpsError('not-found', 'Lawyer profile not found.');
+    }
+
+    const lawyerData = lawyerSnap.data()!;
+    if (lawyerData.role !== 'lawyer' || lawyerData.status !== 'verified') {
+      throw new functions.https.HttpsError('permission-denied', 'Only verified lawyers can submit proposals.');
+    }
+
+    const currentCredits = lawyerData.credits || 0;
+    if (currentCredits < 1) {
+      throw new functions.https.HttpsError('failed-precondition', 'Insufficient credits. You need at least 1 credit to submit a proposal.');
+    }
+
+    // 2. Verify case status
+    const caseRef = db.collection('cases').doc(caseId);
+    const caseSnap = await transaction.get(caseRef);
+    if (!caseSnap.exists) {
+      throw new functions.https.HttpsError('not-found', 'Case not found.');
+    }
+    const caseData = caseSnap.data()!;
+    if (caseData.status !== 'open') {
+      throw new functions.https.HttpsError('failed-precondition', 'This case is no longer open for bidding.');
+    }
+
+    // 3. Deterministic Proposal ID: {caseId}_{lawyerId} (Enforces single-proposal invariant)
+    const proposalId = `${caseId}_${lawyerId}`;
+    const proposalRef = db.collection('proposals').doc(proposalId);
+    const existingProposal = await transaction.get(proposalRef);
+    if (existingProposal.exists) {
+      throw new functions.https.HttpsError('already-exists', 'You have already submitted a proposal for this case.');
+    }
+
+    // 4. Atomically deduct 1 credit
+    transaction.update(lawyerRef, {
+      credits: admin.firestore.FieldValue.increment(-1)
+    });
+
+    // 5. Create proposal
+    transaction.set(proposalRef, {
+      id: proposalId,
+      caseId,
+      lawyerId,
+      bidAmount,
+      message: message.trim(),
+      status: 'pending',
+      createdAt: Date.now()
+    });
+
+    // 6. Record immutable transaction ledger with deterministic operationId
+    const ledgerRef = db.collection('transactions').doc(`bid_${proposalId}`);
+    transaction.set(ledgerRef, {
+      userId: lawyerId,
+      amount: 0,
+      type: 'bid_submission',
+      creditsDeducted: 1,
+      operationId: proposalId,
+      status: 'completed',
+      timestamp: new Date().toISOString()
+    });
+
+    return { success: true, proposalId };
+  });
+});
+
+/**
+ * 6. Server-Side Lawyer Rating Recalculation Trigger
+ * Listens to '/reviews/{reviewId}' creation, calculates the updated average rating,
+ * and increments ratingCount on the lawyer's user profile with admin privileges.
+ */
+export const onReviewCreated = functions.firestore.document('reviews/{reviewId}')
+  .onCreate(async (snapshot, context) => {
+    const reviewData = snapshot.data();
+    if (!reviewData || !reviewData.lawyerId || typeof reviewData.rating !== 'number') {
+      return;
+    }
+
+    const { lawyerId, rating } = reviewData;
+    const db = admin.firestore();
+    const lawyerRef = db.collection('users').doc(lawyerId);
+
+    try {
+      await db.runTransaction(async (transaction) => {
+        const lawyerDoc = await transaction.get(lawyerRef);
+        if (!lawyerDoc.exists) return;
+
+        const lawyer = lawyerDoc.data() || {};
+        const currentRating = typeof lawyer.rating === 'number' ? lawyer.rating : 0;
+        const currentCount = typeof lawyer.ratingCount === 'number' ? lawyer.ratingCount : 0;
+
+        const newCount = currentCount + 1;
+        const newTotalScore = (currentRating * currentCount) + rating;
+        const newAverage = Number((newTotalScore / newCount).toFixed(2));
+
+        transaction.update(lawyerRef, {
+          rating: newAverage,
+          ratingCount: newCount
+        });
+      });
+
+      console.log(`[Rating Update] Lawyer ${lawyerId} rated ${rating} stars. Score updated.`);
+    } catch (error) {
+      console.error(`[Rating Error] Failed to update rating for lawyer ${lawyerId}:`, error);
+    }
+  });
+
+

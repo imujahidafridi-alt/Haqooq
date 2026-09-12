@@ -83,7 +83,8 @@ export const SearchScreen: React.FC<Props> = ({ navigation }) => {
             onPress={() => {
               if (!user) return;
               // Generate a deterministic chat ID pairing the client and lawyer directly
-              const directChatId = `direct-${user.id}-${item.id}`;
+              const [u1, u2] = [user.id, item.id].sort();
+              const directChatId = `direct-${u1}-${u2}`;
               navigation.navigate('SharedChat', { 
                 screen: 'ChatRoom', 
                 params: { chatId: directChatId, chatTitle: `Chat with ${item.displayName || 'Lawyer'}` } 

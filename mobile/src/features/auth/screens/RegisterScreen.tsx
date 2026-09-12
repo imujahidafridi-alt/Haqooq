@@ -15,6 +15,7 @@ import { handleAuthError } from '../../../utils/authErrorHandler';
 export const RegisterScreen = ({ navigation }: any) => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
   const [displayName, setDisplayName] = useState('');
   const [role, setRole] = useState<UserRole>('client');
   const [city, setCity] = useState('');
@@ -22,6 +23,7 @@ export const RegisterScreen = ({ navigation }: any) => {
   const [isLocalLoading, setIsLocalLoading] = useState(false);
   const [isGoogleLoading, setIsGoogleLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
   const CITIES = ['Lahore', 'Karachi', 'Islamabad', 'Rawalpindi'];
   const CATEGORIES = ['Family Law', 'Corporate Law', 'Criminal Law', 'Civil Litigation', 'Property / Real Estate Law'];
@@ -35,6 +37,10 @@ export const RegisterScreen = ({ navigation }: any) => {
     }
     if (!email.trim() || !password.trim()) {
       Alert.alert('Validation Error', 'Please enter email and password.');
+      return false;
+    }
+    if (password !== confirmPassword) {
+      Alert.alert('Password Mismatch', 'Passwords do not match. Please ensure both password fields are identical.');
       return false;
     }
     
@@ -69,6 +75,17 @@ export const RegisterScreen = ({ navigation }: any) => {
   };
 
   const handleGoogleRegisterBtn = async () => {
+    if (role === 'lawyer') {
+      if (!city) {
+        Alert.alert('Validation Error', 'Please select your city before signing up with Google.');
+        return;
+      }
+      if (!specialization) {
+        Alert.alert('Validation Error', 'Please select your specialization before signing up with Google.');
+        return;
+      }
+    }
+
     try {
       setIsGoogleLoading(true);
       await GoogleSignin.hasPlayServices({ showPlayServicesUpdateDialog: true });
@@ -76,7 +93,12 @@ export const RegisterScreen = ({ navigation }: any) => {
       const idToken = userInfo.data?.idToken;
 
       if (idToken) {
-        const profile = await signInWithGoogleCredential(idToken, role, true);
+        const profile = await signInWithGoogleCredential(
+          idToken, 
+          role, 
+          true,
+          role === 'lawyer' ? { city, specialization: [specialization] } : undefined
+        );
         setUser(profile);
       } else {
         throw new Error('Google Sign-In failed to return an ID token.');
@@ -204,6 +226,22 @@ export const RegisterScreen = ({ navigation }: any) => {
                 />
                 <TouchableOpacity onPress={() => setShowPassword(!showPassword)} disabled={isLoading}>
                   <Ionicons name={showPassword ? "eye-outline" : "eye-off-outline"} size={20} color="#64748B" />
+                </TouchableOpacity>
+              </View>
+
+              <View style={[styles.inputContainer, isLoading && styles.inputDisabled]}>
+                <Ionicons name="shield-checkmark-outline" size={20} color="#64748B" style={styles.inputIcon} />
+                <TextInput
+                  style={styles.input}
+                  placeholder="Confirm Password"
+                  placeholderTextColor="#94A3B8"
+                  secureTextEntry={!showConfirmPassword}
+                  value={confirmPassword}
+                  onChangeText={setConfirmPassword}
+                  editable={!isLoading}
+                />
+                <TouchableOpacity onPress={() => setShowConfirmPassword(!showConfirmPassword)} disabled={isLoading}>
+                  <Ionicons name={showConfirmPassword ? "eye-outline" : "eye-off-outline"} size={20} color="#64748B" />
                 </TouchableOpacity>
               </View>
 

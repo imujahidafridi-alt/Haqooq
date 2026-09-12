@@ -10,12 +10,13 @@ import { ForgotPasswordScreen } from '../features/auth/screens/ForgotPasswordScr
 import { ClientNavigator } from './navigators/ClientNavigator';
 import { LawyerNavigator } from './navigators/LawyerNavigator';
 import { AdminDashboard } from '../features/admin/screens/AdminDashboard';
+import { PendingApprovalScreen } from '../features/lawyer/screens/PendingApprovalScreen';
 import { ChatRoomScreen } from '../features/chat/screens/ChatRoomScreen';
 import { PublicProfileScreen } from '../features/shared/screens/PublicProfileScreen';
 import { onAuthStateChanged } from 'firebase/auth';
 import { doc, onSnapshot } from 'firebase/firestore';
 import { auth, db } from '../services/firebaseConfig';
-import { getCurrentUserProfile } from '../features/auth/services/authService';
+import { getCurrentUserProfile, logoutUser } from '../features/auth/services/authService';
 import { registerForPushNotificationsAsync } from '../services/notificationService';
 import { UserProfile } from '../types/models';
 
@@ -38,7 +39,7 @@ const AuthNavigator = () => (
 );
 
 export const RootNavigator = () => {
-  const { user, isLoading, setUser, setLoading } = useAuthStore();
+  const { user, isLoading, setUser, setLoading, logout } = useAuthStore();
   const [isSplashMinTimeDone, setIsSplashMinTimeDone] = useState(false);
 
   useEffect(() => {
@@ -97,14 +98,20 @@ export const RootNavigator = () => {
         newData.id = docSnap.id;
         
         // Prevent infinite loops by checking deeply or just update store
-        // Zustand will handle reference equality for us mostly, but let's be safe
         const currentUserStr = JSON.stringify(useAuthStore.getState().user);
         const newUserStr = JSON.stringify(newData);
         
         if (currentUserStr !== newUserStr) {
           setUser(newData);
         }
+      } else {
+        // Document no longer exists in Firestore (deleted account) -> terminate session
+        console.warn("User profile no longer exists in Firestore. Logging out...");
+        logoutUser().catch(() => {});
+        logout();
       }
+    }, (error) => {
+      console.warn("Real-time profile sync error:", error);
     });
 
     return () => unsubscribeProfile();
@@ -118,12 +125,24 @@ export const RootNavigator = () => {
     <NavigationContainer>
       {user ? (
         <Stack.Navigator screenOptions={{ headerShown: false }}>
-          {user.role === 'client' && <Stack.Screen name="ClientRoot" component={ClientNavigator} />}
-          {user.role === 'lawyer' && <Stack.Screen name="LawyerRoot" component={LawyerNavigator} />}
-          {user.role === 'admin' && <Stack.Screen name="AdminRoot" component={AdminDashboard} />}
-          
-          {/* Shared Screens accessible regardless of role */}
-          <Stack.Screen name="SharedChat" component={ChatStack} />
+          {user.status === 'suspended' ? (
+            <Stack.Screen name="SuspendedAccount" component={PendingApprovalScreen} />
+          ) : (
+            <>
+              {user.role === 'client' && <Stack.Screen name="ClientRoot" component={ClientNavigator} />}
+              {user.role === 'lawyer' && (
+                user.status === 'verified' ? (
+                  <Stack.Screen name="LawyerRoot" component={LawyerNavigator} />
+                ) : (
+                  <Stack.Screen name="LawyerPending" component={PendingApprovalScreen} />
+                )
+              )}
+              {user.role === 'admin' && <Stack.Screen name="AdminRoot" component={AdminDashboard} />}
+              
+              {/* Shared Screens accessible regardless of role */}
+              <Stack.Screen name="SharedChat" component={ChatStack} />
+            </>
+          )}
         </Stack.Navigator>
       ) : (
         <AuthNavigator />

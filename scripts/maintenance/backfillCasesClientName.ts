@@ -1,5 +1,12 @@
-﻿import { getDocs, collection, doc, updateDoc, getDoc } from 'firebase/firestore';
-import { db } from './src/services/firebaseConfig';
+/**
+ * Operational Maintenance Script: Backfill Cases Client Name
+ * 
+ * Inspects all cases missing a clientName or having 'Unknown Client'/'Anonymous Client',
+ * resolves the user's profile from /users/{clientId}, and updates the case document.
+ */
+
+import { getDocs, collection, doc, updateDoc, getDoc } from 'firebase/firestore';
+import { db } from '../../mobile/src/services/firebaseConfig';
 
 async function run() {
   console.log("Starting case backfill script...");
@@ -17,7 +24,7 @@ async function run() {
           await updateDoc(caseDoc.ref, { clientName: finalName });
           console.log(`Updated case ${caseDoc.id} with name ${finalName}`);
         } else {
-            console.log(`User ${data.clientId} not found.`);
+          console.log(`User ${data.clientId} not found.`);
         }
       }
     }

@@ -108,34 +108,42 @@ export const EasypaisaCheckoutModal: React.FC<Props> = ({ isVisible, onClose, pl
 
     setIsSubmitting(true);
     try {
-      // Duplicate transaction prevention (Client-Side Check)
+      // Duplicate transaction prevention (Client-Side Check scoped to current user to respect Firestore security rules)
       const duplicateQuery = query(
         collection(db, 'credit_purchases'),
+        where('lawyerId', '==', user.id),
         where('transactionId', '==', transactionId.trim())
       );
       const duplicateSnap = await getDocs(duplicateQuery);
       if (!duplicateSnap.empty) {
-        Alert.alert('Duplicate Transaction ID', 'This Transaction ID / Reference Number has already been submitted.');
+        Alert.alert('Duplicate Transaction ID', 'You have already submitted a request with this Transaction ID / Reference Number.');
         setIsSubmitting(false);
         return;
       }
 
-      // Upload image to Firebase Storage if selected (Screenshot is Optional)
+      // Upload image to Firebase Storage if selected (Structured user-scoped path)
       let downloadUrl = '';
       if (imageUri) {
         const storage = getStorage();
-        const filename = `receipts/${user.id}_${Date.now()}.jpg`;
+        const filename = `receipts/${user.id}/${Date.now()}.jpg`;
         const storageRef = ref(storage, filename);
         
         const response = await fetch(imageUri);
         const blob = await response.blob();
-        await uploadBytes(storageRef, blob);
+        await uploadBytes(storageRef, blob, { contentType: 'image/jpeg' });
         downloadUrl = await getDownloadURL(storageRef);
       }
 
-      // Create request in Firestore
+      const packageId = planName.toLowerCase().includes('starter') 
+        ? 'starter' 
+        : planName.toLowerCase().includes('pro') 
+          ? 'professional' 
+          : 'elite';
+
+      // Create request in Firestore (strictly with status: 'pending')
       await addDoc(collection(db, 'credit_purchases'), {
         lawyerId: user.id,
+        packageId,
         planName,
         credits,
         amount,

@@ -16,48 +16,80 @@ service cloud.firestore {
       return exists(/databases/$(database)/documents/users/$(request.auth.uid));
     }
     
+    function isActiveUser() {
+      return isAuthenticated() && userExists() && getUserData().status != 'suspended';
+    }
     function isAdmin() {
-      return isAuthenticated() && userExists() && getUserData().role == 'admin';
+      return isActiveUser() && getUserData().role == 'admin';
     }
     function isVerifiedLawyer() {
-      return isAuthenticated() && userExists() && getUserData().role == 'lawyer' && getUserData().status == 'verified';
+      return isActiveUser() && getUserData().role == 'lawyer' && getUserData().status == 'verified';
     }
 
     match /users/{userId} {
-      allow read: if isOwner(userId) || isAdmin() || (resource != null && resource.data.role == 'lawyer' && resource.data.status == 'verified');
-      allow create: if isOwner(userId) && request.resource.data.role != 'admin' && 
-                       (!request.resource.data.keys().hasAny(['isPremium', 'biddingCredits']) || request.resource.data.isPremium == false) &&
-                       (!request.resource.data.keys().hasAny(['credits']) || request.resource.data.credits <= 10);
-      allow update: if isOwner(userId) && (!request.resource.data.diff(resource.data).affectedKeys().hasAny(['isPremium', 'biddingCredits', 'status', 'role', 'credits'])) || isAdmin();
+      allow read: if isOwner(userId) || isAdmin() || (isActiveUser() && resource != null && resource.data.status == 'verified');
+      allow create: if isOwner(userId) && request.resource.data.id == userId && (
+        (
+          request.resource.data.role == 'client' &&
+          request.resource.data.status == 'verified' &&
+          request.resource.data.credits == 0 &&
+          request.resource.data.isPremium == false
+        ) || (
+          request.resource.data.role == 'lawyer' &&
+          request.resource.data.status == 'pending' &&
+          request.resource.data.credits == 10 &&
+          request.resource.data.isPremium == false
+        )
+      );
+      allow update: if (
+        isOwner(userId) && 
+        isActiveUser() &&
+        !request.resource.data.diff(resource.data).affectedKeys().hasAny([
+          'role',
+          'status',
+          'isPremium',
+          'credits',
+          'biddingCredits'
+        ])
+      ) || isAdmin();
     }
 
     match /cases/{caseId} {
-      allow read, write: if isAuthenticated() && resource != null && resource.data.clientId == request.auth.uid;
+      allow read, write: if isActiveUser() && resource != null && resource.data.clientId == request.auth.uid;
       allow read: if isVerifiedLawyer() && resource != null && (resource.data.status == 'open' || resource.data.assignedLawyerId == request.auth.uid);
       allow update: if isVerifiedLawyer() && resource != null && resource.data.assignedLawyerId == request.auth.uid;
-      allow create: if isAuthenticated() && request.resource.data.clientId == request.auth.uid;
+      allow create: if isActiveUser() && request.resource.data.clientId == request.auth.uid;
     }
 
     match /proposals/{proposalId} {
-        allow write: if isVerifiedLawyer() && request.resource.data.lawyerId == request.auth.uid || 
-                     (isAuthenticated() && get(/databases/$(database)/documents/cases/$(request.resource.data.caseId)).data.clientId == request.auth.uid);
-        
-        allow read: if (isAuthenticated() && get(/databases/$(database)/documents/cases/$(resource.data.caseId)).data.clientId == request.auth.uid) || 
-                       (isVerifiedLawyer() && resource != null && resource.data.lawyerId == request.auth.uid);
+      // Server-authoritative: proposals must be created via Cloud Function submitProposal
+      allow create: if false;
+      allow read: if (isActiveUser() && get(/databases/$(database)/documents/cases/$(resource.data.caseId)).data.clientId == request.auth.uid) || 
+                     (isVerifiedLawyer() && resource != null && resource.data.lawyerId == request.auth.uid) ||
+                     isAdmin();
+      allow update: if isActiveUser() && 
+                       get(/databases/$(database)/documents/cases/$(resource.data.caseId)).data.clientId == request.auth.uid &&
+                       request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status']) &&
+                       request.resource.data.status in ['accepted', 'rejected'];
+      allow delete: if false;
     }
 
     match /chats/{chatId} {
-      allow read, update: if isAuthenticated() && (resource.data.participants.hasAny([request.auth.uid]) || isAdmin());
-      allow create: if isAuthenticated() && request.resource.data.participants.hasAny([request.auth.uid]);
+      allow read, update: if isActiveUser() && (resource.data.participants.hasAny([request.auth.uid]) || isAdmin());
+      allow create: if isActiveUser() && request.resource.data.participants.hasAny([request.auth.uid]);
       
       match /messages/{messageId} {
-        allow read, write: if isAuthenticated() && (get(/databases/$(database)/documents/chats/$(chatId)).data.participants.hasAny([request.auth.uid]) || isAdmin());
+        allow read, write: if isActiveUser() && (get(/databases/$(database)/documents/chats/$(chatId)).data.participants.hasAny([request.auth.uid]) || isAdmin());
       }
     }
 
     match /notifications/{notificationId} {
       allow create: if isAuthenticated();
-      allow read, update, delete: if false; 
+      allow read: if isActiveUser() && resource.data.userId == request.auth.uid;
+      allow update: if isActiveUser() && 
+                       resource.data.userId == request.auth.uid && 
+                       request.resource.data.diff(resource.data).affectedKeys().hasOnly(['read']);
+      allow delete: if false; 
     }
 
     match /audit_logs/{logId} {
@@ -67,16 +99,30 @@ service cloud.firestore {
 
     match /transactions/{txId} {
       allow read: if resource != null && (isOwner(resource.data.userId) || isAdmin());
-      allow create: if isAuthenticated() && 
-                       request.resource.data.userId == request.auth.uid && 
-                       request.resource.data.status == 'completed' && 
-                       request.resource.data.type in ['premium_profile', 'bidding_credits', 'bid_submission'];
+      // Financial ledger is strictly server-authoritative
       allow write: if false; 
     }
 
     match /credit_purchases/{purchaseId} {
-      allow create: if isAuthenticated() && request.resource.data.lawyerId == request.auth.uid;
-      allow read: if isAuthenticated() && resource.data.lawyerId == request.auth.uid;
+      allow create: if isActiveUser() && 
+                       request.resource.data.lawyerId == request.auth.uid &&
+                       request.resource.data.status == 'pending';
+      allow read: if isActiveUser() && resource.data.lawyerId == request.auth.uid;
+      allow update, delete: if false;
+    }
+
+    match /reports/{reportId} {
+      allow create: if isActiveUser() && request.resource.data.reporterId == request.auth.uid;
+      allow read, update, delete: if isAdmin();
+    }
+
+    match /reviews/{reviewId} {
+      allow create: if isActiveUser() && 
+                       request.resource.data.clientId == request.auth.uid &&
+                       request.resource.data.rating >= 1 && request.resource.data.rating <= 5 &&
+                       get(/databases/$(database)/documents/cases/$(request.resource.data.caseId)).data.clientId == request.auth.uid &&
+                       get(/databases/$(database)/documents/cases/$(request.resource.data.caseId)).data.status == 'closed';
+      allow read: if isAuthenticated();
       allow update, delete: if false;
     }
   }

@@ -11,12 +11,13 @@ import { Avatar } from '../../../components/ui/Avatar';
 import { UserProfile, LawyerProfile } from '../../../types/models';
 import { signOut } from 'firebase/auth';
 import { auth, storage } from '../../../services/firebaseConfig';
+import { logoutUser } from '../../auth/services/authService';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
 
 export const ProfileScreen = () => {
-  const { user, setUser } = useAuthStore();
+  const { user, setUser, logout } = useAuthStore();
   const [profile, setProfile] = useState<UserProfile | LawyerProfile | null>(user);
   
   // Offline first: Initialize with local Zustand store state immediately (0 delay)
@@ -85,9 +86,9 @@ export const ProfileScreen = () => {
         const response = await fetch(uri);
         const blob = await response.blob();
 
-        // Upload to Firebase Storage
-        const storageRef = ref(storage, `avatars/${user!.id}_${Date.now()}`);
-        await uploadBytes(storageRef, blob);
+        // Upload to Firebase Storage conforming to storage.rules: /avatars/{userId}/{filename}
+        const storageRef = ref(storage, `avatars/${user!.id}/${Date.now()}.jpg`);
+        await uploadBytes(storageRef, blob, { contentType: 'image/jpeg' });
         
         // Get public download URL
         const downloadUrl = await getDownloadURL(storageRef);
@@ -113,6 +114,7 @@ export const ProfileScreen = () => {
   const handleUpdate = async () => {
     if (!user || !profile) return;
     setSaving(true);
+
     try {
       const docRef = doc(db, 'users', user.id);
       const updateData: any = {
@@ -145,10 +147,11 @@ export const ProfileScreen = () => {
 
   const handleLogout = async () => {
     try {
-      await signOut(auth);
+      await logoutUser();
     } catch (error) {
-       console.error(error);
+       console.error('Logout error:', error);
     }
+    logout();
   };
 
   const RenderSettingOption = ({ icon, title, onPress }: any) => (

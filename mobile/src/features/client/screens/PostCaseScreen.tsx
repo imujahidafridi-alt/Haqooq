@@ -1,41 +1,59 @@
 import React, { useState } from 'react';
-import { View, StyleSheet, Text, ScrollView, Alert, KeyboardAvoidingView, Platform } from 'react-native';
+import { 
+  View, 
+  StyleSheet, 
+  Text, 
+  ScrollView, 
+  Alert, 
+  KeyboardAvoidingView, 
+  Platform,
+  TouchableOpacity 
+} from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Input } from '../../../components/ui/Input';
 import { Button } from '../../../components/ui/Button';
 import { Card } from '../../../components/ui/Card';
 import { useAuthStore } from '../../../store/authStore';
-import { classifyCaseWithAI, postCaseToMarketplace } from '../services/caseService'
+import { postCaseToMarketplace } from '../services/caseService';
+import { Colors } from '../../../utils/Colors';
+import { Ionicons } from '@expo/vector-icons';
+
+const CATEGORIES = [
+  'Property / Real Estate Law',
+  'Family Law',
+  'Corporate Law',
+  'Criminal Law',
+  'Civil Litigation',
+  'Labor & Employment'
+];
+
 export const PostCaseScreen = ({ navigation }: any) => {
   const { user } = useAuthStore();
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [budget, setBudget] = useState('');
-  
-  const [detectedCategory, setDetectedCategory] = useState<string | null>(null);
-  const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const [selectedCategory, setSelectedCategory] = useState<string>('Civil Litigation');
   const [isPosting, setIsPosting] = useState(false);
 
-  const handleAnalyze = async () => {
-    if (description.length < 10) {
-      Alert.alert('Details Needed', 'Please provide a more detailed description of your issue.');
+  const handlePostListing = async () => {
+    if (title.trim().length < 5) {
+      Alert.alert('Details Needed', 'Please provide a descriptive case title (at least 5 characters).');
       return;
     }
-    
-    setIsAnalyzing(true);
-    try {
-      const category = await classifyCaseWithAI(description);
-      setDetectedCategory(category);
-    } catch (error) {
-      Alert.alert('AI Engine Error', 'Unable to classify the case automatically.');
-    } finally {
-      setIsAnalyzing(false);
-    }
-  };
 
-  const handlePostCase = async () => {
-    if (!title || !description || !detectedCategory) {
-      Alert.alert('Missing Info', 'Please ensure your case has a title, description, and has been categorized.');
+    if (!selectedCategory) {
+      Alert.alert('Category Required', 'Please select a legal practice area for your listing.');
+      return;
+    }
+
+    if (description.trim().length < 15) {
+      Alert.alert('Details Needed', 'Please explain your situation with a bit more detail (at least 15 characters) so advocates can evaluate your case.');
+      return;
+    }
+
+    const parsedBudget = budget.trim() ? parseFloat(budget.trim().replace(/,/g, '')) : undefined;
+    if (parsedBudget !== undefined && (isNaN(parsedBudget) || parsedBudget < 0)) {
+      Alert.alert('Invalid Budget', 'Please enter a valid numerical budget or leave it blank.');
       return;
     }
 
@@ -43,25 +61,37 @@ export const PostCaseScreen = ({ navigation }: any) => {
     try {
       await postCaseToMarketplace(
         user!.id,
-        user!.displayName || 'Unknown Client',
-        title,
-        description,
-        detectedCategory,
-        budget ? parseFloat(budget) : undefined
+        user!.displayName || 'Client',
+        title.trim(),
+        description.trim(),
+        selectedCategory,
+        parsedBudget
       );
 
-      Alert.alert('Success', 'Your case is now live on the marketplace!');
+      Alert.alert(
+        'Listing Published',
+        'Your case listing is now live on the marketplace. Verified advocates will review and submit proposals.',
+        [
+          {
+            text: 'View My Cases',
+            onPress: () => {
+              setTitle('');
+              setDescription('');
+              setBudget('');
+              setSelectedCategory('Civil Litigation');
+              navigation.navigate('Cases');
+            }
+          }
+        ]
+      );
 
       setTitle('');
       setDescription('');
       setBudget('');
-      setDetectedCategory(null);
-      
-      // Navigate user to their 'My Cases' tab where they can see the newly open case
-      navigation.navigate('Cases'); 
+      setSelectedCategory('Civil Litigation');
 
     } catch (error: any) {
-      Alert.alert('Error', error.message);
+      Alert.alert('Error Posting Listing', error?.message || 'Unable to publish listing. Please try again.');
     } finally {
       setIsPosting(false);
     }
@@ -71,52 +101,72 @@ export const PostCaseScreen = ({ navigation }: any) => {
     <SafeAreaView style={styles.container}>
       <KeyboardAvoidingView
         style={{ flex: 1 }}
-        behavior={Platform.OS === 'ios' ? 'padding' : 'padding'}
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
         keyboardVerticalOffset={Platform.OS === 'ios' ? 100 : 20}
       >
         <ScrollView 
-          contentContainerStyle={[styles.scrollContent, { paddingBottom: 100 }]}
+          contentContainerStyle={[styles.scrollContent, { paddingBottom: 110 }]}
           keyboardShouldPersistTaps="handled"
+          showsVerticalScrollIndicator={false}
         >
-          <Text style={styles.header}>Find Legal Help</Text>
-        <Text style={styles.subtext}>Describe your problem in plain english. Our AI will categorize it and match you with the right experts.</Text>
-
-        <Card style={styles.card}>
-          <Input 
-            label="Case Title" 
-            placeholder="e.g. Stop Eviction Notice"
-            value={title}
-            onChangeText={setTitle}
-          />
-          
-          <Input 
-            label="Detailed Description" 
-            placeholder="Explain what happened..."
-            multiline
-            numberOfLines={4}
-            style={{ height: 100, textAlignVertical: 'top' }}
-            value={description}
-            onChangeText={setDescription}
-          />
-
-          {!detectedCategory ? (
-            <Button 
-              title="Analyze with AI" 
-              onPress={handleAnalyze} 
-              isLoading={isAnalyzing} 
-              variant="secondary"
-            />
-          ) : (
-            <View style={styles.categoryBox}>
-              <Text style={styles.categoryLabel}>AI Category Detected:</Text>
-              <Text style={styles.categoryValue}>{detectedCategory}</Text>
+          {/* Header */}
+          <View style={styles.headerContainer}>
+            <View style={styles.iconCircle}>
+              <Ionicons name="document-text-outline" size={24} color={Colors.primary} />
             </View>
-          )}
-        </Card>
+            <Text style={styles.header}>Post a Case Listing</Text>
+            <Text style={styles.subtext}>
+              Connect directly with verified legal professionals across Pakistan. Describe your matter, set your estimated budget, and receive competitive proposals.
+            </Text>
+          </View>
 
-        {detectedCategory && (
+          {/* Form Card */}
           <Card style={styles.card}>
-            <Text style={styles.sectionTitle}>Marketplace Options</Text>
+            <Input 
+              label="Listing Title *" 
+              placeholder="e.g. Property Boundary Dispute in Gulberg"
+              value={title}
+              onChangeText={setTitle}
+            />
+
+            {/* Category Selector */}
+            <View style={styles.categorySection}>
+              <Text style={styles.fieldLabel}>Practice Area / Category *</Text>
+              <View style={styles.chipsContainer}>
+                {CATEGORIES.map((cat) => {
+                  const isSelected = selectedCategory === cat;
+                  return (
+                    <TouchableOpacity
+                      key={cat}
+                      style={[styles.categoryChip, isSelected && styles.categoryChipActive]}
+                      onPress={() => setSelectedCategory(cat)}
+                      activeOpacity={0.7}
+                    >
+                      <Ionicons 
+                        name={isSelected ? "checkmark-circle" : "ellipse-outline"} 
+                        size={15} 
+                        color={isSelected ? '#FFFFFF' : Colors.textSecondary} 
+                        style={{ marginRight: 6 }}
+                      />
+                      <Text style={[styles.categoryChipText, isSelected && styles.categoryChipTextActive]}>
+                        {cat}
+                      </Text>
+                    </TouchableOpacity>
+                  );
+                })}
+              </View>
+            </View>
+            
+            <Input 
+              label="Detailed Description *" 
+              placeholder="Explain the background, timeline, parties involved, and what assistance you need from an advocate..."
+              multiline
+              numberOfLines={5}
+              style={{ height: 110, textAlignVertical: 'top' }}
+              value={description}
+              onChangeText={setDescription}
+            />
+
             <Input 
               label="Estimated Budget (Optional - PKR)" 
               placeholder="e.g. 50000"
@@ -124,14 +174,22 @@ export const PostCaseScreen = ({ navigation }: any) => {
               value={budget}
               onChangeText={setBudget}
             />
+
+            <View style={styles.infoNotice}>
+              <Ionicons name="shield-checkmark-outline" size={18} color={Colors.success} style={{ marginRight: 8 }} />
+              <Text style={styles.infoNoticeText}>
+                Your contact information is protected. Advocates communicate through secure in-app messaging.
+              </Text>
+            </View>
+
             <Button 
-              title="Post Case to Marketplace" 
-              onPress={handlePostCase} 
-              isLoading={isPosting} 
+              title="Post Listing" 
+              onPress={handlePostListing} 
+              isLoading={isPosting}
+              style={{ marginTop: 8 }}
             />
           </Card>
-        )}
-      </ScrollView>
+        </ScrollView>
       </KeyboardAvoidingView>
     </SafeAreaView>
   );
@@ -140,50 +198,90 @@ export const PostCaseScreen = ({ navigation }: any) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f8f9fa'
+    backgroundColor: Colors.background,
   },
   scrollContent: {
-    padding: 20
+    padding: 18,
+  },
+  headerContainer: {
+    marginBottom: 18,
+  },
+  iconCircle: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: '#E2E8F0',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 10,
   },
   header: {
-    fontSize: 28,
-    fontWeight: 'bold',
-    color: '#111',
-    marginBottom: 8
+    fontSize: 26,
+    fontWeight: '700',
+    color: Colors.text,
+    marginBottom: 6,
   },
   subtext: {
-    fontSize: 15,
-    color: '#666',
-    marginBottom: 20,
-    lineHeight: 22
+    fontSize: 14,
+    color: Colors.textSecondary,
+    lineHeight: 20,
   },
   card: {
-    marginBottom: 16
+    marginBottom: 16,
+    padding: 18,
   },
-  sectionTitle: {
-    fontSize: 18,
+  categorySection: {
+    marginBottom: 16,
+  },
+  fieldLabel: {
+    fontSize: 14,
     fontWeight: '600',
-    marginBottom: 16
+    color: '#333',
+    marginBottom: 8,
   },
-  categoryBox: {
-    backgroundColor: '#E8F5E9',
-    padding: 16,
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: '#A5D6A7',
+  chipsContainer: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+  },
+  categoryChip: {
+    flexDirection: 'row',
     alignItems: 'center',
-    marginTop: 8
+    paddingVertical: 7,
+    paddingHorizontal: 12,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    backgroundColor: '#F8FAFC',
+    marginBottom: 4,
   },
-  categoryLabel: {
-    color: '#2E7D32',
+  categoryChipActive: {
+    backgroundColor: Colors.primary,
+    borderColor: Colors.primary,
+  },
+  categoryChipText: {
+    fontSize: 13,
+    fontWeight: '500',
+    color: Colors.text,
+  },
+  categoryChipTextActive: {
+    color: '#FFFFFF',
+    fontWeight: '600',
+  },
+  infoNotice: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#F0FDF4',
+    borderWidth: 1,
+    borderColor: '#BBF7D0',
+    padding: 12,
+    borderRadius: 8,
+    marginBottom: 16,
+  },
+  infoNoticeText: {
+    flex: 1,
     fontSize: 12,
-    fontWeight: 'bold',
-    textTransform: 'uppercase',
-    marginBottom: 4
-  },
-  categoryValue: {
-    color: '#1B5E20',
-    fontSize: 18,
-    fontWeight: 'bold'
+    color: '#166534',
+    lineHeight: 16,
   }
 });

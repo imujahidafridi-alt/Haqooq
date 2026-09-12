@@ -59,6 +59,7 @@ export const Sidebar = ({ isOpen, onClose }: SidebarProps) => {
           {onClose && (
             <button
               onClick={onClose}
+              aria-label="Close navigation sidebar"
               className="rounded-xl border border-slate-800 p-2 text-slate-400 hover:bg-slate-900 hover:text-white lg:hidden"
             >
               <X className="h-5 w-5" />
@@ -66,7 +67,7 @@ export const Sidebar = ({ isOpen, onClose }: SidebarProps) => {
           )}
         </div>
 
-        <nav className="space-y-6">
+        <nav className="space-y-6" aria-label="Admin Navigation">
           {navGroups.map((group) => (
             <div key={group.group} className="space-y-2">
               <h3 className="px-4 text-[10px] font-bold uppercase tracking-[0.2em] text-slate-550">
@@ -107,7 +108,7 @@ export const Sidebar = ({ isOpen, onClose }: SidebarProps) => {
   return (
     <>
       {/* Desktop Sidebar (persistent) */}
-      <aside className="hidden w-72 min-h-screen border-r border-slate-800 bg-slate-950/85 p-6 lg:block backdrop-blur-xl shrink-0">
+      <aside className="hidden w-72 min-h-screen border-r border-slate-800 bg-slate-950/85 p-6 lg:block backdrop-blur-xl shrink-0" aria-label="Desktop Navigation">
         <SidebarContent />
       </aside>
 
@@ -116,17 +117,22 @@ export const Sidebar = ({ isOpen, onClose }: SidebarProps) => {
         className={`fixed inset-0 z-50 flex lg:hidden transition-opacity duration-300 ${
           isOpen ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'
         }`}
+        aria-hidden={!isOpen}
       >
         {/* Backdrop overlay */}
         <div
           onClick={onClose}
           className="fixed inset-0 bg-slate-950/80 backdrop-blur-sm"
+          aria-hidden="true"
         />
 
         {/* Sidebar container */}
         <aside
+          role="dialog"
+          aria-modal="true"
+          aria-label="Mobile Navigation Menu"
           className={`relative flex w-72 max-w-xs flex-col border-r border-slate-800 bg-slate-950 p-6 transition-transform duration-300 ease-in-out h-full ${
-            isOpen ? 'translate-x-0' : '-translate-x-0'
+            isOpen ? 'translate-x-0' : '-translate-x-full'
           }`}
         >
           <SidebarContent />

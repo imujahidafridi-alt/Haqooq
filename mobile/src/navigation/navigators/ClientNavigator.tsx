@@ -29,7 +29,7 @@ const ClientTabs = () => {
         tabBarIcon: ({ focused, color, size }) => {
           let iconName: keyof typeof Ionicons.glyphMap = 'help-outline';
 
-          if (route.name === 'Home') iconName = focused ? 'home' : 'home-outline';
+          if (route.name === 'Home') iconName = focused ? 'add-circle' : 'add-circle-outline';
           else if (route.name === 'Search') iconName = focused ? 'search' : 'search-outline';
           else if (route.name === 'Cases') iconName = focused ? 'briefcase' : 'briefcase-outline';
           else if (route.name === 'Inbox') iconName = focused ? 'chatbubbles' : 'chatbubbles-outline';
@@ -41,7 +41,7 @@ const ClientTabs = () => {
         tabBarInactiveTintColor: 'gray',
       })}
     >
-      <Tab.Screen name="Home" component={PostCaseScreen} options={{ title: 'Home' }} />
+      <Tab.Screen name="Home" component={PostCaseScreen} options={{ title: 'Post Listing' }} />
       <Tab.Screen name="Search" component={SearchScreen} options={{ title: 'Find Lawyer' }} />
       <Tab.Screen name="Cases" component={ActiveCasesScreen} options={{ title: 'My Cases', headerShown: true }} />
       <Tab.Screen name="Inbox" component={InboxScreen} options={{ title: 'Inbox', headerShown: true }} />

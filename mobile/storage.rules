@@ -8,18 +8,51 @@ service firebase.storage {
       return request.auth != null;
     }
 
-    match /credentials/{filename} {
-      // Any authenticated user can upload their own credentials (prefixed by their user UID)
-      allow write: if isAuthenticated() && filename.startsWith(request.auth.uid);
-      // Only the owner lawyer or an administrator can read the credentials
-      allow read: if isAuthenticated() && (filename.startsWith(request.auth.uid) || (firestore.exists(/databases/(default)/documents/users/$(request.auth.uid)) && firestore.get(/databases/(default)/documents/users/$(request.auth.uid)).data.role == 'admin'));
+    function isAdmin() {
+      return firestore.exists(/databases/(default)/documents/users/$(request.auth.uid)) && 
+             firestore.get(/databases/(default)/documents/users/$(request.auth.uid)).data.role == 'admin';
     }
 
+    // Public Avatars: readable by all users, writable only by account owner (images only, < 5MB)
+    match /avatars/{userId}/{filename} {
+      allow write: if isAuthenticated() && request.auth.uid == userId &&
+                      request.resource.size < 5 * 1024 * 1024 &&
+                      request.resource.contentType.matches('image/.*');
+      allow read: if true;
+    }
+    match /avatars/{filename} {
+      allow write: if isAuthenticated() && filename.startsWith(request.auth.uid) &&
+                      request.resource.size < 5 * 1024 * 1024 &&
+                      request.resource.contentType.matches('image/.*');
+      allow read: if true;
+    }
+
+    // Lawyer Verification Credentials (PDF or images, < 10MB)
+    match /credentials/{userId}/{filename} {
+      allow write: if isAuthenticated() && request.auth.uid == userId &&
+                      request.resource.size < 10 * 1024 * 1024 &&
+                      (request.resource.contentType.matches('image/.*') || request.resource.contentType == 'application/pdf');
+      allow read: if isAuthenticated() && (request.auth.uid == userId || isAdmin());
+    }
+    match /credentials/{filename} {
+      allow write: if isAuthenticated() && filename.startsWith(request.auth.uid) &&
+                      request.resource.size < 10 * 1024 * 1024 &&
+                      (request.resource.contentType.matches('image/.*') || request.resource.contentType == 'application/pdf');
+      allow read: if isAuthenticated() && (filename.startsWith(request.auth.uid) || isAdmin());
+    }
+
+    // Payment Proof Receipts (images only, < 10MB)
+    match /receipts/{userId}/{filename} {
+      allow write: if isAuthenticated() && request.auth.uid == userId &&
+                      request.resource.size < 10 * 1024 * 1024 &&
+                      request.resource.contentType.matches('image/.*');
+      allow read: if isAuthenticated() && (request.auth.uid == userId || isAdmin());
+    }
     match /receipts/{filename} {
-      // Any authenticated user can upload receipt screenshot prefixed with their UID
-      allow write: if isAuthenticated() && filename.startsWith(request.auth.uid);
-      // Only the owner lawyer or an administrator can read the receipt
-      allow read: if isAuthenticated() && (filename.startsWith(request.auth.uid) || (firestore.exists(/databases/(default)/documents/users/$(request.auth.uid)) && firestore.get(/databases/(default)/documents/users/$(request.auth.uid)).data.role == 'admin'));
+      allow write: if isAuthenticated() && filename.startsWith(request.auth.uid) &&
+                      request.resource.size < 10 * 1024 * 1024 &&
+                      request.resource.contentType.matches('image/.*');
+      allow read: if isAuthenticated() && (filename.startsWith(request.auth.uid) || isAdmin());
     }
     
     match /{allPaths=**} {

@@ -1,17 +1,18 @@
-import { collection, query, where, getDocs, addDoc, orderBy, getDoc, doc, runTransaction } from 'firebase/firestore';
-import { db } from '../../../services/firebaseConfig';
+import { collection, query, where, getDocs, addDoc, orderBy, getDoc, doc, limit } from 'firebase/firestore';
+import { httpsCallable } from 'firebase/functions';
+import { db, functions } from '../../../services/firebaseConfig';
 import { LegalCase, CaseProposal } from '../../../types/models';
 
 /**
- * Fetches all cases currently open in the marketplace.
- * In a real-world scenario, this might also filter by the Lawyer's location or specialty.
+ * Fetches cases currently open in the marketplace (paginated / limited).
  */
-export const getOpenCases = async (): Promise<LegalCase[]> => {
+export const getOpenCases = async (pageSize: number = 50): Promise<LegalCase[]> => {
   try {
     const q = query(
       collection(db, 'cases'),
       where('status', '==', 'open'),
-      orderBy('createdAt', 'desc')
+      orderBy('createdAt', 'desc'),
+      limit(pageSize)
     );
     
     const querySnapshot = await getDocs(q);
@@ -38,39 +39,15 @@ export const getOpenCases = async (): Promise<LegalCase[]> => {
     
     return cases;
   } catch (error) {
-    console.warn("Using mocked data for open cases:", error);
-    // Return dummy data for development without Firebase connected
-    return [
-      {
-        id: 'mock-case-1',
-        clientId: 'client-123',
-        clientName: 'Jane Doe',
-        title: 'Stop Eviction Notice',
-        description: 'My landlord is trying to evict me without a 30-day notice. Need to file an injunction.',
-        category: 'Property / Real Estate Law',
-        budget: 15000,
-        status: 'open',
-        timeline: [],
-        createdAt: Date.now() - 100000,
-      },
-      {
-        id: 'mock-case-2',
-        clientId: 'client-456',
-        clientName: 'John Smith',
-        title: 'Business Partnership Dispute',
-        description: 'Co-founder is trying to sell company assets without board approval.',
-        category: 'Corporate Law',
-        budget: 75000,
-        status: 'open',
-        timeline: [],
-        createdAt: Date.now() - 500000,
-      }
-    ];
+    console.warn("Error fetching open cases:", error);
+    return [];
   }
 };
 
 /**
- * Submits a bid/proposal on a specific case.
+ * Submits a bid/proposal on a specific case via server-authoritative Cloud Function.
+ * The server verifies verification status, checks credit balance, verifies single proposal uniqueness,
+ * atomically decrements credit, creates the proposal, and logs the ledger entry.
  */
 export const submitProposal = async (
   caseId: string,
@@ -79,65 +56,21 @@ export const submitProposal = async (
   message: string
 ): Promise<string> => {
   try {
-    const docRefId = await runTransaction(db, async (transaction) => {
-      // 1. Check user credits first
-      const lawyerRef = doc(db, 'users', lawyerId);
-      const lawyerSnap = await transaction.get(lawyerRef);
-      if (!lawyerSnap.exists()) {
-        throw new Error('User not found.');
-      }
-      
-      const credits = lawyerSnap.data().credits || 0;
-      if (credits < 1) {
-        throw new Error('Insufficient credits. Please purchase more credits from Pro Tools to submit a proposal.');
-      }
+    const submitProposalFn = httpsCallable<{ caseId: string; bidAmount: number; message: string }, { success: boolean; proposalId: string }>(
+      functions,
+      'submitProposal'
+    );
 
-      // 2. Prevent duplicate bids on the same case
-      const duplicateQuery = query(
-        collection(db, 'proposals'),
-        where('caseId', '==', caseId),
-        where('lawyerId', '==', lawyerId)
-      );
-      // Transactions in firestore: reads must come before writes, query gets are allowed
-      const duplicateBids = await getDocs(duplicateQuery);
-      if (!duplicateBids.empty) {
-        throw new Error('You have already submitted a proposal for this case.');
-      }
-
-      // 3. Deduct credit
-      transaction.update(lawyerRef, { credits: credits - 1 });
-
-      // Cannot addDoc immediately from transaction easily, wait we can just generate a ref and set it.
-      const newProposalRef = doc(collection(db, 'proposals'));
-      const proposalData: Omit<CaseProposal, 'id'> = {
-        caseId,
-        lawyerId,
-        bidAmount,
-        message,
-        status: 'pending',
-        createdAt: Date.now(),
-      };
-      
-      transaction.set(newProposalRef, proposalData);
-
-      // Log credit deduction transaction
-      const sysTransRef = doc(collection(db, 'transactions'));
-      transaction.set(sysTransRef, {
-        userId: lawyerId,
-        amount: 0,
-        type: 'bid_submission',
-        creditsDeducted: 1,
-        status: 'completed',
-        timestamp: new Date().toISOString()
-      });
-
-      return newProposalRef.id;
+    const result = await submitProposalFn({
+      caseId,
+      bidAmount,
+      message
     });
 
-    return docRefId;
+    return result.data.proposalId;
   } catch (error: any) {
-    console.error("Error submitting proposal:", error);
-    throw new Error(error.message || 'Unable to submit your proposal. Please try again.');
+    console.error("Error submitting proposal via Cloud Function:", error);
+    throw new Error(error.message || 'Unable to submit your proposal. Please check your credentials or credits.');
   }
 };
 

@@ -76,6 +76,53 @@ export const subscribeToInboxChats = (userId: string, callback: (chats: ChatThre
  */
 export const sendMessage = async (chatId: string, senderId: string, text: string) => {
   try {
+    const isDirect = chatId.startsWith('direct-');
+    const parts = chatId.split('-');
+    let defaultParticipants = isDirect && parts.length === 3 ? [parts[1], parts[2]] : [senderId];
+    let recipientId = isDirect && parts.length === 3 ? parts.find(p => p !== senderId && p !== 'direct') : null;
+
+    if (!isDirect) {
+      try {
+        const caseSnap = await getDoc(doc(db, 'cases', chatId));
+        if (caseSnap.exists()) {
+          const cData = caseSnap.data();
+          const caseParticipants = [cData.clientId, cData.assignedLawyerId].filter(Boolean);
+          if (caseParticipants.length > 0) {
+            defaultParticipants = Array.from(new Set([...defaultParticipants, ...caseParticipants]));
+            recipientId = defaultParticipants.find(p => p !== senderId) || null;
+          }
+        }
+      } catch (err) {
+        console.warn("Could not load case for chat thread creation:", err);
+      }
+    }
+
+    const chatRef = doc(db, 'chats', chatId);
+    const chatDoc = await getDoc(chatRef);
+
+    if (!chatDoc.exists()) {
+      // First message in thread — initialize parent document with participants before subcollection write
+      // to satisfy Firestore security rules (request.auth.uid in get(chat).data.participants)
+      await setDoc(chatRef, {
+        participants: defaultParticipants,
+        lastMessage: text,
+        caseId: isDirect ? null : chatId,
+        updatedAt: serverTimestamp(),
+        createdAt: serverTimestamp(),
+        unreadCount: recipientId ? { [recipientId]: 1 } : {}
+      });
+    } else {
+      const updatePayload: any = {
+        lastMessage: text,
+        updatedAt: serverTimestamp(),
+        participants: arrayUnion(senderId)
+      };
+      if (recipientId) {
+        updatePayload[`unreadCount.${recipientId}`] = increment(1);
+      }
+      await setDoc(chatRef, updatePayload, { merge: true });
+    }
+
     const msgData: Partial<ChatMessage> = {
       chatId,
       senderId,
@@ -83,31 +130,9 @@ export const sendMessage = async (chatId: string, senderId: string, text: string
       createdAt: serverTimestamp() // Using server time for accurate cross-device ordering
     };
 
-    // Add to subcollection
+    // Add to subcollection now that parent document is verified to exist with participants
     const messagesRef = collection(db, `chats/${chatId}/messages`);
     await addDoc(messagesRef, msgData);
-
-    // Parse the receiver immediately if direct
-    const isDirect = chatId.startsWith('direct-');
-    const parts = chatId.split('-');
-    const defaultParticipants = isDirect && parts.length === 3 ? [parts[1], parts[2]] : arrayUnion(senderId);
-    
-    // Find the recipient implicitly if it's a direct message to increment their unread counter
-    const recipientId = isDirect && parts.length === 3 ? parts.find(p => p !== senderId && p !== 'direct') : null;
-
-    // Update parent document's read preview
-    const chatRef = doc(db, 'chats', chatId);
-    const updatePayload: any = {
-      lastMessage: text,
-      updatedAt: serverTimestamp(),
-      participants: defaultParticipants
-    };
-    
-    if (recipientId) {
-      updatePayload[`unreadCount.${recipientId}`] = increment(1);
-    }
-
-    await setDoc(chatRef, updatePayload, { merge: true });
 
   } catch (error) {
     console.error("Failed to send message:", error);

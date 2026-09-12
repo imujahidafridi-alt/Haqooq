@@ -73,6 +73,12 @@ export const GET = async (request: Request) => {
   return NextResponse.json(requestsWithLawyers);
 };
 
+const PACKAGE_CATALOG: Record<string, { credits: number; amount: number; planName: string }> = {
+  starter: { credits: 10, amount: 250, planName: 'Starter Pack' },
+  professional: { credits: 50, amount: 1000, planName: 'Professional Pack' },
+  elite: { credits: 100, amount: 1800, planName: 'Elite Pack' }
+};
+
 export const POST = async (request: Request) => {
   const auth = await verifyAdminRequest(request as any);
   if (!auth) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
@@ -97,31 +103,54 @@ export const POST = async (request: Request) => {
 
       const lawyerId = data.lawyerId;
       const userRef = db.collection('users').doc(lawyerId);
-      const transRef = db.collection('transactions').doc();
+      // Idempotency: Deterministic ledger document ID per credit request
+      const transRef = db.collection('transactions').doc(`purchase_${requestId}`);
       const notifRef = db.collection('notifications').doc();
       const auditLogRef = db.collection('audit_logs').doc();
+
+      const existingLedger = await transaction.get(transRef);
+      if (existingLedger.exists) {
+        throw new Error('Transaction ledger already recorded for this purchase');
+      }
 
       let pushTitle = '';
       let pushBody = '';
 
       if (action === 'approve') {
-        const creditsToAdd = data.credits || 0;
+        // Authoritative resolution: never trust client-submitted credits or amount
+        const packageKey = (data.packageId || '').toLowerCase();
+        const planNameKey = (data.planName || '').toLowerCase();
+        let matchedPackage = PACKAGE_CATALOG[packageKey];
+        if (!matchedPackage) {
+          if (planNameKey.includes('elite')) matchedPackage = PACKAGE_CATALOG.elite;
+          else if (planNameKey.includes('pro')) matchedPackage = PACKAGE_CATALOG.professional;
+          else matchedPackage = PACKAGE_CATALOG.starter;
+        }
+
+        const creditsToAdd = matchedPackage.credits;
+        const verifiedAmount = matchedPackage.amount;
         
         // 1. Update purchase request
-        transaction.update(docRef, { status: 'approved', processedAt: new Date().toISOString() });
+        transaction.update(docRef, { 
+          status: 'approved', 
+          credits: creditsToAdd,
+          amount: verifiedAmount,
+          processedAt: new Date().toISOString() 
+        });
         
         // 2. Increment credits and auto-verify lawyer if Elite Pack was purchased
         const updateData: any = { credits: FieldValue.increment(creditsToAdd) };
-        if (data.planName === 'Elite Pack') {
+        if (matchedPackage.planName === 'Elite Pack') {
           updateData.status = 'verified';
         }
         transaction.update(userRef, updateData);
         
-        // 3. Create transaction ledger entry
+        // 3. Create immutable transaction ledger entry with deterministic operationId
         transaction.set(transRef, {
           userId: lawyerId,
-          amount: data.amount,
+          amount: verifiedAmount,
           type: 'credit_purchase',
+          operationId: requestId,
           status: 'completed',
           timestamp: new Date().toISOString()
         });

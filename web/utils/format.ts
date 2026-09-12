@@ -1,16 +1,23 @@
-export const formatCurrency = (value: number) =>
-  new Intl.NumberFormat('en-PK', {
+export const formatCurrency = (value?: number | null) => {
+  const numericValue = typeof value === 'number' && !isNaN(value) ? value : 0;
+  return new Intl.NumberFormat('en-PK', {
     style: 'currency',
     currency: 'PKR',
     maximumFractionDigits: 0
-  }).format(value);
+  }).format(numericValue);
+};
 
-export const formatDate = (timestamp: number | string) =>
-  new Intl.DateTimeFormat('en-US', {
+export const formatDate = (timestamp?: number | string | null) => {
+  if (!timestamp) return '—';
+  const numericTime = typeof timestamp === 'number' ? timestamp : new Date(timestamp).getTime();
+  if (isNaN(numericTime)) return '—';
+
+  return new Intl.DateTimeFormat('en-US', {
     year: 'numeric',
     month: 'short',
     day: 'numeric'
-  }).format(typeof timestamp === 'number' ? timestamp : new Date(timestamp).getTime());
+  }).format(numericTime);
+};
 
 export const formatRelative = (timestamp: number) => {
   const diff = Date.now() - timestamp;

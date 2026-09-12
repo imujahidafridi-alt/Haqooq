@@ -43,9 +43,35 @@ export const GET = async (request: Request) => {
     openCases: openCasesReq.data().count,
     activeCases: activeCasesReq.data().count,
     closedCases: closedCasesReq.data().count,
-    revenueTotal: revenueReq.data().revenue,
+    revenueTotal: revenueReq.data().revenue ?? 0,
     pendingReports: reportsCountReq.data().count,
-    recentActivity: auditSnapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() })),
+    recentActivity: auditSnapshot.docs.map((doc) => {
+      const d = doc.data();
+      let rawTimestamp = d.timestamp;
+      let normalizedTimestamp = Date.now();
+      if (typeof rawTimestamp === 'number') {
+        normalizedTimestamp = rawTimestamp;
+      } else if (typeof rawTimestamp === 'string') {
+        normalizedTimestamp = new Date(rawTimestamp).getTime() || Date.now();
+      } else if (rawTimestamp && typeof rawTimestamp.toDate === 'function') {
+        normalizedTimestamp = rawTimestamp.toDate().getTime();
+      } else if (rawTimestamp && typeof rawTimestamp._seconds === 'number') {
+        normalizedTimestamp = rawTimestamp._seconds * 1000;
+      }
+
+      const rawAction = d.action || 'GOVERNANCE_EVENT';
+      const formattedTitle = rawAction
+        .split('_')
+        .map((w: string) => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase())
+        .join(' ');
+
+      return {
+        id: doc.id,
+        ...d,
+        title: d.title || `${formattedTitle} (${d.module || d.entityType || 'system'})`,
+        timestamp: normalizedTimestamp
+      };
+    }),
     lawyerPerformance: lawyerSnapshot.docs.map((doc) => {
       const data = doc.data();
       return { 

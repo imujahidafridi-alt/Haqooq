@@ -17,7 +17,7 @@ export const verifyAdminRequest = async (request: NextRequest) => {
   if (!userDoc.exists) return null;
 
   const userData = userDoc.data();
-  if (!userData || userData.role !== 'admin') return null;
+  if (!userData || userData.role !== 'admin' || userData.status === 'suspended') return null;
 
   return { uid: decoded.uid, profile: userData };
 };

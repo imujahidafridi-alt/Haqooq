@@ -196,7 +196,14 @@ export const LawyerCasesScreen: React.FC<Props> = ({ navigation }) => {
               />
               <Button 
                 icon="chatbubble-ellipses-outline" 
-                onPress={() => navigation.navigate('SharedChat', { screen: 'ChatRoom', params: { caseId: item.id } })}
+                onPress={() => navigation.navigate('SharedChat', { 
+                  screen: 'ChatRoom', 
+                  params: { 
+                    chatId: item.id, 
+                    caseId: item.id, 
+                    chatTitle: item.title || 'Case Discussion' 
+                  } 
+                })}
                 style={{ width: 48, minWidth: 48, height: 48, paddingHorizontal: 0, marginRight: 8, flexShrink: 0 }}
               />
               <Button 

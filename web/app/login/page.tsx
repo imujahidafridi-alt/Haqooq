@@ -10,32 +10,72 @@ import toast, { Toaster } from 'react-hot-toast';
 
 export default function LoginPage() {
   const router = useRouter();
-  const { user, loading, signIn } = useAuth();
+  const { user, firebaseUser, loading, isAuthenticated, isAuthorized, authError, signIn, signOutAdmin } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
-    if (!loading && user) {
+    if (!loading && isAuthenticated && isAuthorized) {
       router.push('/dashboard');
     }
-  }, [loading, user, router]);
+  }, [loading, isAuthenticated, isAuthorized, router]);
 
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     setIsSubmitting(true);
 
     try {
-      await signIn(email, password);
-      toast.success('Welcome back, admin!');
-      router.push('/dashboard');
+      const result = await signIn(email, password);
+      if (result.authorized) {
+        toast.success('Welcome back, admin!');
+        router.push('/dashboard');
+      } else {
+        toast.error('Access Denied: Administrator privileges required.');
+      }
     } catch (error: any) {
       toast.error(error.message || 'Unable to sign in.');
     } finally {
       setIsSubmitting(false);
     }
   };
+
+  // If user is authenticated with Firebase but not authorized as an admin
+  if (!loading && isAuthenticated && !isAuthorized) {
+    return (
+      <main className="flex min-h-screen items-center justify-center bg-slate-950 px-4 py-10 text-slate-100">
+        <Toaster position="top-center" />
+        <div className="w-full max-w-md rounded-[32px] border border-amber-900/40 bg-slate-900/95 p-10 shadow-2xl shadow-slate-950/40 text-center">
+          <div className="mx-auto mb-6 flex h-16 w-16 items-center justify-center rounded-2xl bg-amber-500/10 text-amber-400">
+            <EyeOff className="h-8 w-8" />
+          </div>
+          <p className="text-xs uppercase tracking-[0.4em] text-amber-500 font-semibold">Access Denied</p>
+          <h1 className="mt-3 text-2xl font-bold text-white">Administrator Access Required</h1>
+          <p className="mt-3 text-sm leading-6 text-slate-300">
+            You are signed in as <span className="font-semibold text-white">{firebaseUser?.email || user?.email}</span>. This account does not have administrative permissions for the governance portal.
+          </p>
+          <div className="mt-8 space-y-3">
+            <Button
+              type="button"
+              onClick={async () => {
+                await signOutAdmin();
+              }}
+              className="w-full"
+            >
+              Sign in with another account
+            </Button>
+            <a
+              href="/"
+              className="block rounded-2xl border border-slate-800 bg-slate-950/80 py-3 text-sm font-semibold text-slate-400 hover:text-white transition"
+            >
+              Return to Homepage
+            </a>
+          </div>
+        </div>
+      </main>
+    );
+  }
 
   return (
     <main className="flex min-h-screen items-center justify-center bg-slate-950 px-4 py-10 text-slate-100">
