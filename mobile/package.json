@@ -1,6 +1,6 @@
 {
   "name": "mobile",
-  "version": "1.0.1",
+  "version": "1.0.4",
   "main": "index.ts",
   "scripts": {
     "start": "expo start",
@@ -9,6 +9,7 @@
     "web": "expo start --web",
     "test": "jest",
     "build:apk": "cd android && gradlew.bat assembleRelease",
+    "build:bundle": "cd android && gradlew.bat bundleRelease",
     "build:eas:apk": "eas build -p android --profile preview"
   },
   "dependencies": {
