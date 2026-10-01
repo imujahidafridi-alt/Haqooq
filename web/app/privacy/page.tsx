@@ -69,7 +69,7 @@ export default function PrivacyPolicyPage() {
             </p>
           </div>
 
-          <div>
+          <div id="data-deletion">
             <h2 className="text-xl font-semibold text-white mb-3">6. Your Rights and Data Deletion</h2>
             <p>
               You have the right to access, update, or request the deletion of your account and associated personal data at any time. To request account deletion or data removal, please contact our support team at <span className="text-blue-400 font-medium">imujahidafridi@gmail.com</span> or use the in-app profile settings.
