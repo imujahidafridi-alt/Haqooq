@@ -1,29 +1,83 @@
-﻿# Node modules
+# ==============================================================================
+# Haqooq Monorepo - Comprehensive Git Ignore
+# Protects root, web (Next.js), pwa (Vite/React), and mobile (Expo/React Native)
+# ==============================================================================
+
+# Dependencies
 node_modules/
+.pnp
+.pnp.js
 
-# Next.js build output
-.next/
+# Build Outputs & Bundles
+dist/
+dist-ssr/
+build/
 out/
+.next/
+web-build/
+.cache/
+.turbo/
+dev-dist/
 
-# Local environment files
+# Framework & Deployment Caches
+.vercel/
+.expo/
+.metro-health-check*
+
+# Environment Variables & Secrets (CRITICAL SECURITY)
 .env
 .env.*
+.env*.local
+*.env
+*.pem
+*.key
+*.cert
+*.p8
+*.p12
+*.mobileprovision
+!*.env.example
+!*.env.*.example
+!mobile/debug.keystore
 
-# Logs
+# Android / iOS Native Build Artifacts (if not managed by EAS)
+*.jks
+*.keystore
+!mobile/debug.keystore
+.kotlin/
+*.orig.*
+
+# Logs & Diagnostics
+*.log
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
 
-# Editor directories
+# TypeScript
+*.tsbuildinfo
+next-env.d.ts
+
+# Testing & Coverage
+coverage/
+.nyc_output/
+
+# IDE & OS Artifacts
+.DS_Store
+.DS_Store?
+._*
+Thumbs.db
+ehthumbs.db
+desktop.ini
 .vscode/
 .idea/
+*.sublime-project
+*.sublime-workspace
+*.swp
+*.swo
 
-# TypeScript build info
-*.tsbuildinfo
-
-# Coverage
-coverage/
-
-# Ignore OS files
-.DS_Store
-Thumbs.db
+# Temporary / Scratch scripts
+tmp/
+temp/
+scratch/
+countUsers.mjs

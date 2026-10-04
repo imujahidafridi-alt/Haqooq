@@ -1,0 +1,99 @@
+@import "tailwindcss";
+@import './tokens.css';
+
+@theme {
+  --color-primary: #1A365D;
+  --color-primary-dark: #0F172A;
+  --color-primary-light: #2A4365;
+  --color-secondary: #C5A880;
+  --color-secondary-dark: #A0825B;
+  --color-secondary-light: #F7F4EF;
+  --color-lawyer: #5856D6;
+  --color-client: #0D9488;
+  --color-surface: #F8FAFC;
+  --font-sans: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  --font-serif: 'Playfair Display', Georgia, serif;
+}
+
+@layer base {
+  html, body {
+    width: 100%;
+    min-height: 100%;
+    height: 100%;
+    font-family: var(--font-sans);
+    background-color: #F8FAFC;
+    color: #0F172A;
+    line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    -webkit-tap-highlight-color: transparent;
+    overscroll-behavior-y: none;
+  }
+
+  body {
+    display: flex;
+    flex-direction: column;
+    overflow-x: hidden;
+  }
+
+  #root {
+    min-height: 100dvh;
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+  }
+
+  /* Tap target optimization */
+  button, a {
+    touch-action: manipulation;
+  }
+
+  /* Prevent Edge and IE from adding duplicate native password eye reveal and clear icons */
+  input::-ms-reveal,
+  input::-ms-clear {
+    display: none !important;
+  }
+
+  /* Autofill color stability */
+  input:-webkit-autofill,
+  input:-webkit-autofill:hover, 
+  input:-webkit-autofill:focus {
+    -webkit-text-fill-color: #0F172A;
+    transition: background-color 5000s ease-in-out 0s;
+  }
+}
+
+/* Custom scrollbar utility */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: #CBD5E1;
+  border-radius: 9999px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #94A3B8;
+}
+
+/* Animations */
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes slideUp {
+  from { transform: translateY(100%); }
+  to { transform: translateY(0); }
+}
+
+.animate-fade-in {
+  animation: fadeIn 0.2s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.animate-slide-up {
+  animation: slideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
